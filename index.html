@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#06111f" />
+  <meta name="description" content="Alerta Viagem PRO — busca inteligente de passagens, hotéis e pacotes em pontos ou dinheiro." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Alerta Viagem PRO</title>
+</head>
+<body>
+  <div class="aurora aurora-a"></div><div class="aurora aurora-b"></div>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark">✦</div><div><strong>Alerta Viagem</strong><span>PRO</span></div></div>
+      <nav>
+        <button class="nav-item active" data-view="dashboard"><span>⌂</span>Visão geral</button>
+        <button class="nav-item" data-view="search"><span>⌕</span>Nova busca</button>
+        <button class="nav-item" data-view="saved"><span>◎</span>Minhas buscas</button>
+        <button class="nav-item" data-view="alerts"><span>◉</span>Alertas</button>
+        <button class="nav-item" data-view="admin"><span>◇</span>Administração</button>
+      </nav>
+      <div class="side-status"><i></i><div><b>Motor inteligente</b><small>Pronto para analisar</small></div></div>
+      <button class="profile"><span class="avatar">S</span><span><b>Samuel</b><small>Administrador</small></span><span>⌄</span></button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button id="menuBtn" class="icon-btn mobile-only" aria-label="Abrir menu">☰</button>
+        <div><p class="eyebrow">CENTRAL INTELIGENTE DE VIAGENS</p><h1 id="pageTitle">Visão geral</h1></div>
+        <div class="top-actions"><button id="themeBtn" class="icon-btn" title="Alternar tema">◐</button><button id="quickSearch" class="primary compact">+ Nova busca</button></div>
+      </header>
+
+      <section class="view active" id="view-dashboard">
+        <div class="hero-panel glass">
+          <div class="hero-copy"><span class="pill glow">IA DE OPORTUNIDADES</span><h2>Viaje melhor usando seus pontos e seu dinheiro.</h2><p>Compare passagens, hotéis e pacotes completos. O sistema destaca onde seus pontos rendem mais.</p><button class="primary" data-go="search">Começar uma busca <span>→</span></button></div>
+          <div class="orb"><div class="orb-core">✦</div><span class="orbit o1"></span><span class="orbit o2"></span><span class="orbit o3"></span></div>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card glass"><span class="stat-icon">⌕</span><div><small>Buscas salvas</small><strong id="statSearches">0</strong><em>monitoramento contínuo</em></div></article>
+          <article class="stat-card glass"><span class="stat-icon">◉</span><div><small>Alertas ativos</small><strong id="statAlerts">6</strong><em>WhatsApp e e-mail</em></div></article>
+          <article class="stat-card glass"><span class="stat-icon">✦</span><div><small>Melhor economia</small><strong id="statSaving">R$ 0</strong><em>estimativa inteligente</em></div></article>
+          <article class="stat-card glass"><span class="stat-icon">◇</span><div><small>Pontos cadastrados</small><strong id="statPoints">160 mil</strong><em>todos os programas</em></div></article>
+        </div>
+
+        <div class="two-col">
+          <section class="panel glass"><div class="panel-head"><div><span class="eyebrow">OPORTUNIDADES</span><h3>Ofertas em destaque</h3></div><button class="text-btn" data-go="search">Ver todas →</button></div><div id="dealList" class="deal-list"></div></section>
+          <section class="panel glass"><div class="panel-head"><div><span class="eyebrow">SEUS PONTOS</span><h3>Carteira de fidelidade</h3></div><button class="text-btn" data-open="wallet">Editar</button></div><div class="wallet-list" id="walletList"></div></section>
+        </div>
+      </section>
+
+      <section class="view" id="view-search">
+        <div class="search-layout">
+          <form id="searchForm" class="panel glass search-form">
+            <div class="panel-head"><div><span class="eyebrow">BUSCA INTELIGENTE</span><h3>Monte sua viagem</h3></div><span class="step-badge">1 de 1</span></div>
+            <div class="form-grid">
+              <div class="field span-2 autocomplete-wrap"><label>Origem</label><div class="input-icon"><span>⌖</span><input id="origin" autocomplete="off" placeholder="Digite a cidade ou aeroporto" required /></div><div class="suggestions" id="originSuggestions"></div></div>
+              <div class="field span-2 autocomplete-wrap"><label>Destino</label><div class="input-icon"><span>⌖</span><input id="destination" autocomplete="off" placeholder="Digite a cidade ou aeroporto" /></div><div class="suggestions" id="destinationSuggestions"></div></div>
+              <label class="switch-line span-4"><input type="checkbox" id="anyDestination"><span class="switch"></span><span><b>Encontrar qualquer destino barato</b><small>A IA procura automaticamente as melhores oportunidades.</small></span></label>
+              <div class="field"><label>Ida</label><input type="date" id="departure" required></div>
+              <div class="field"><label>Volta</label><input type="date" id="return"></div>
+              <div class="field"><label>Adultos</label><div class="counter"><button type="button" data-counter="adults" data-delta="-1">−</button><input id="adults" value="1" readonly><button type="button" data-counter="adults" data-delta="1">+</button></div></div>
+              <div class="field"><label>Crianças</label><div class="counter"><button type="button" data-counter="children" data-delta="-1">−</button><input id="children" value="0" readonly><button type="button" data-counter="children" data-delta="1">+</button></div></div>
+              <div id="childAges" class="child-ages span-4 hidden"></div>
+              <div class="field span-2"><label>Como prefere pagar?</label><select id="preference"><option value="best">Melhor custo-benefício</option><option value="points">Priorizar pontos</option><option value="cash">Priorizar dinheiro</option><option value="mixed">Pontos + dinheiro</option></select></div>
+              <div class="field span-2"><label>Tipo de busca</label><select id="tripType"><option value="complete">Viagem completa</option><option value="flight">Somente passagem</option><option value="hotel">Somente hotel</option></select></div>
+            </div>
+            <div class="search-footer"><div><b>Comparação inteligente ativada</b><small>Azul, LATAM, Smiles, Livelo e dinheiro.</small></div><button class="primary" type="submit"><span>✦</span> Analisar melhores opções</button></div>
+          </form>
+
+          <aside class="panel glass ai-side"><span class="pill glow">ASSISTENTE IA</span><h3>O que será analisado?</h3><ul><li><i>✓</i>Preço total para todos</li><li><i>✓</i>Valor real de cada ponto</li><li><i>✓</i>Taxas, escalas e bagagem</li><li><i>✓</i>Voo, hotel e pacote</li><li><i>✓</i>Combinações mais vantajosas</li></ul><div class="ai-note"><span>✦</span><p>A recomendação final explica por que uma opção é melhor.</p></div></aside>
+        </div>
+        <section id="resultsPanel" class="panel glass results-panel hidden"><div class="panel-head"><div><span class="eyebrow">ANÁLISE CONCLUÍDA</span><h3>Melhores opções encontradas</h3></div><div class="results-actions"><button id="saveSearch" class="secondary">Salvar busca</button><button id="exportResults" class="secondary">Exportar resumo</button></div></div><div id="aiRecommendation" class="recommendation"></div><div id="resultCards" class="result-grid"></div></section>
+      </section>
+
+      <section class="view" id="view-saved"><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">MONITORAMENTO</span><h3>Minhas buscas</h3></div><button class="primary compact" data-go="search">+ Nova busca</button></div><div id="savedList" class="saved-list"></div></section></section>
+
+      <section class="view" id="view-alerts"><div class="two-col alerts-layout"><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">PREFERÊNCIAS</span><h3>Notificações</h3></div><span id="alertStatus" class="status-on">Ativas</span></div><div id="alertControls" class="alert-controls"></div></section><section class="panel glass"><span class="pill glow">CANAIS</span><h3>Como você quer ser avisado?</h3><div class="channel-card"><span>◉</span><div><b>WhatsApp</b><small>Avisos rápidos de oportunidades</small></div><em>Conectar depois</em></div><div class="channel-card"><span>✉</span><div><b>E-mail</b><small>Resumo completo com comparação</small></div><em>Conectar depois</em></div><p class="info-note">O envio real exige integração com provedores oficiais. As preferências já ficam salvas no sistema.</p></section></div></section>
+
+      <section class="view" id="view-admin"><div class="admin-stats stats-grid"><article class="stat-card glass"><span class="stat-icon">◇</span><div><small>Usuários</small><strong>12</strong><em>8 ativos</em></div></article><article class="stat-card glass"><span class="stat-icon">◷</span><div><small>Pendentes</small><strong>3</strong><em>aguardando análise</em></div></article><article class="stat-card glass"><span class="stat-icon">⊘</span><div><small>Bloqueados</small><strong>1</strong><em>acesso suspenso</em></div></article><article class="stat-card glass"><span class="stat-icon">R$</span><div><small>Planos ativos</small><strong>8</strong><em>receita recorrente</em></div></article></div><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">GESTÃO</span><h3>Usuários e planos</h3></div><button class="primary compact">+ Novo usuário</button></div><div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Plano</th><th>Status</th><th>Vencimento</th><th>Ações</th></tr></thead><tbody id="userTable"></tbody></table></div></section></section>
+    </main>
+  </div>
+
+  <dialog id="walletDialog"><form method="dialog" class="modal glass"><div class="panel-head"><div><span class="eyebrow">CARTEIRA</span><h3>Saldo de pontos</h3></div><button class="icon-btn">×</button></div><div id="walletInputs" class="wallet-inputs"></div><button id="saveWallet" class="primary" value="default">Salvar carteira</button></form></dialog>
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
