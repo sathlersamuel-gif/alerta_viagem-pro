@@ -56,7 +56,8 @@
       arrival_id: (route[1] || '').slice(0, 3),
       outbound_date: search?.departure || '',
       adults: String(search?.adults || 1),
-      children: String(search?.children || 0)
+      children: String(search?.children || 0),
+      airline: String(result.name || '')
     });
     if (search?.return) params.set('return_date', search.return);
     if (result.bookingToken) params.set('booking_token', result.bookingToken);
