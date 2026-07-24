@@ -6,6 +6,10 @@
   const save = (items) => localStorage.setItem(KEY, JSON.stringify(items));
   const formatDate = (v) => v ? new Date(`${v}T12:00:00`).toLocaleDateString('pt-BR') : '';
 
+  const hideSearchPreferences = () => document.querySelector('#monitorPreferences')?.remove();
+  hideSearchPreferences();
+  new MutationObserver(hideSearchPreferences).observe(document.body, { childList:true, subtree:true });
+
   const nav = document.querySelector('.sidebar nav');
   if (nav && !document.querySelector('[data-view="monitoring"]')) {
     const btn = document.createElement('button');
@@ -23,7 +27,7 @@
   section.innerHTML = `
     <div class="two-col alerts-layout">
       <section class="panel glass">
-        <div class="panel-head"><div><span class="eyebrow">MONITORAMENTO AUTOMÁTICO</span><h3>Nova viagem monitorada</h3></div><span class="status-on">Fica salva</span></div>
+        <div class="panel-head"><div><span class="eyebrow">MONITORAMENTO AUTOMÁTICO</span><h3>Configurar viagem</h3></div><span class="status-on">Fica salva</span></div>
         <form id="monitorForm" class="form-grid">
           <div class="field span-2"><label>Origem</label><input id="mOrigin" placeholder="Cidade ou aeroporto" required></div>
           <div class="field span-2"><label>Destino</label><input id="mDestination" placeholder="Cidade ou aeroporto" required></div>
@@ -43,8 +47,18 @@
     </div>`;
   main.appendChild(section);
 
+  const dashboard = document.querySelector('#view-dashboard .hero-panel');
+  if (dashboard && !document.querySelector('#quickMonitorCard')) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.id = 'quickMonitorCard';
+    card.className = 'quick-monitor-card glass';
+    card.innerHTML = '<span class="quick-monitor-icon">◷</span><span><b>Monitorar uma viagem</b><small>Datas, passageiros, milhas e alertas ficam salvos</small></span><em>Configurar ›</em>';
+    dashboard.insertAdjacentElement('afterend', card);
+  }
+
   const style = document.createElement('style');
-  style.textContent = `.monitor-card{padding:16px;border:1px solid rgba(115,196,255,.2);border-radius:16px;margin-bottom:12px;background:rgba(255,255,255,.03)}.monitor-card h4{margin:0 0 6px}.monitor-meta{display:grid;gap:5px;color:#afc6d9;font-size:13px}.monitor-actions{display:flex;gap:8px;margin-top:12px}.monitor-actions button{flex:1}.monitor-empty{padding:24px;text-align:center;color:#afc6d9}`;
+  style.textContent = `.quick-monitor-card{width:100%;display:flex;align-items:center;gap:12px;text-align:left;margin:14px 0 18px;padding:13px 16px;border:1px solid rgba(115,196,255,.18);border-radius:15px;background:rgba(255,255,255,.025);color:inherit;cursor:pointer}.quick-monitor-card:hover{border-color:rgba(56,217,255,.35)}.quick-monitor-card span:nth-child(2){display:grid;gap:2px;flex:1}.quick-monitor-card small{color:#9fb6ca;font-size:12px}.quick-monitor-card em{font-style:normal;color:#68dfff;font-size:13px}.quick-monitor-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:rgba(56,217,255,.09)}.monitor-card{padding:16px;border:1px solid rgba(115,196,255,.2);border-radius:16px;margin-bottom:12px;background:rgba(255,255,255,.03)}.monitor-card h4{margin:0 0 6px}.monitor-meta{display:grid;gap:5px;color:#afc6d9;font-size:13px}.monitor-actions{display:flex;gap:8px;margin-top:12px}.monitor-actions button{flex:1}.monitor-empty{padding:24px;text-align:center;color:#afc6d9}@media(max-width:768px){.quick-monitor-card{margin-top:10px;padding:12px}.quick-monitor-card em{display:none}}`;
   document.head.appendChild(style);
 
   function showView() {
@@ -56,6 +70,7 @@
     render();
   }
   document.querySelector('[data-view="monitoring"]')?.addEventListener('click', showView);
+  document.querySelector('#quickMonitorCard')?.addEventListener('click', showView);
 
   function render() {
     const list = $('#monitorList');
