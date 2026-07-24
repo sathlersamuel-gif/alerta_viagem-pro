@@ -1,4 +1,4 @@
-// Modo Guardião 24h: ativa monitoramento, notificações e prepara o aparelho para push.
+// Modo Guardião 24h: monitoramento local e preparação para notificações push.
 (() => {
   const ENABLED_KEY = 'avpro_guardian_enabled';
   const LAST_HEARTBEAT_KEY = 'avpro_guardian_last_heartbeat';
@@ -7,6 +7,8 @@
 
   const isEnabled = () => localStorage.getItem(ENABLED_KEY) === 'true';
   const saveEnabled = value => localStorage.setItem(ENABLED_KEY, String(Boolean(value)));
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  const isStandalone = () => window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
   function formatTime(value) {
     const date = value ? new Date(value) : null;
@@ -22,7 +24,12 @@
   async function requestNotifications() {
     if (!('Notification' in window)) return 'unsupported';
     if (Notification.permission === 'granted') return 'granted';
-    return Notification.requestPermission();
+    if (Notification.permission === 'denied') return 'denied';
+    try {
+      return await Notification.requestPermission();
+    } catch {
+      return 'unsupported';
+    }
   }
 
   function showLocalNotification(title, body) {
@@ -39,6 +46,14 @@
       .catch(() => {});
   }
 
+  function notificationModeText() {
+    if (!isEnabled()) return 'Guardião desativado';
+    if ('Notification' in window && Notification.permission === 'granted') return 'Guardião ativo com notificações';
+    if (isIOS() && !isStandalone()) return 'Guardião ativo dentro do app • instale na Tela de Início para alertas externos';
+    if ('Notification' in window && Notification.permission === 'denied') return 'Guardião ativo • notificações bloqueadas no aparelho';
+    return 'Guardião ativo dentro do aplicativo';
+  }
+
   function updateCard() {
     const enabled = isEnabled();
     const button = document.querySelector('#guardianToggle');
@@ -49,9 +64,13 @@
       button.textContent = enabled ? 'Desativar Guardião 24h' : 'Ativar Guardião 24h';
       button.classList.toggle('guardian-active', enabled);
     }
-    if (status) status.textContent = enabled ? 'Guardião ativo neste aparelho' : 'Guardião desativado';
+    if (status) status.textContent = notificationModeText();
     if (last) last.textContent = `Última verificação: ${formatTime(localStorage.getItem(LAST_HEARTBEAT_KEY))}`;
     if (dot) dot.classList.toggle('on', enabled);
+  }
+
+  function showInstallGuidance() {
+    window.toast?.('Guardião ativado. Para receber avisos com o app fechado, use Compartilhar → Adicionar à Tela de Início.');
   }
 
   function mountCard() {
@@ -95,20 +114,38 @@
       }
 
       try {
-        await registerWorker();
-        const permission = await requestNotifications();
-        if (permission !== 'granted') {
-          window.toast?.('Permita as notificações para ativar o Guardião');
+        await registerWorker().catch(() => null);
+
+        // No iPhone, a aba comum do navegador não pode solicitar Web Push.
+        // O monitoramento local deve ativar mesmo assim, sem bloquear o usuário.
+        if (isIOS() && !isStandalone()) {
+          saveEnabled(true);
+          startGuardian();
+          updateCard();
+          showInstallGuidance();
           return;
         }
+
+        const permission = await requestNotifications();
         saveEnabled(true);
         startGuardian();
         updateCard();
-        showLocalNotification('Alerta Viagem PRO', 'Modo Guardião ativado. Vou avisar quando houver novidades.');
-        window.toast?.('Guardião 24h ativado neste iPhone');
+
+        if (permission === 'granted') {
+          showLocalNotification('Alerta Viagem PRO', 'Modo Guardião ativado. Vou avisar quando houver novidades.');
+          window.toast?.('Guardião 24h ativado com notificações');
+        } else if (permission === 'denied') {
+          window.toast?.('Guardião ativado, mas as notificações estão bloqueadas nas configurações do aparelho.');
+        } else {
+          window.toast?.('Guardião ativado dentro do aplicativo.');
+        }
       } catch (error) {
         console.error('Falha ao ativar Guardião:', error);
-        window.toast?.('Não foi possível ativar as notificações neste aparelho');
+        // Uma falha de notificação não deve impedir o monitoramento local.
+        saveEnabled(true);
+        startGuardian();
+        updateCard();
+        window.toast?.('Guardião ativado dentro do aplicativo.');
       }
     });
 
