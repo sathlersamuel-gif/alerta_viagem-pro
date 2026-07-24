@@ -5,15 +5,11 @@ const pathFor = clientId => `monitoring/${clientId}.json`;
 
 module.exports = async function handler(req, res) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return res.status(503).json({
-      error: 'O banco online ainda não foi conectado ao projeto na Vercel.'
-    });
+    return res.status(503).json({ error: 'O banco online ainda não foi conectado ao projeto na Vercel.' });
   }
 
   const clientId = String(req.query.clientId || req.body?.clientId || '').toLowerCase();
-  if (!CLIENT_PATTERN.test(clientId)) {
-    return res.status(400).json({ error: 'Identificador do monitoramento inválido.' });
-  }
+  if (!CLIENT_PATTERN.test(clientId)) return res.status(400).json({ error: 'Identificador do monitoramento inválido.' });
 
   try {
     if (req.method === 'GET') {
@@ -29,8 +25,8 @@ module.exports = async function handler(req, res) {
       const trips = Array.isArray(req.body?.trips) ? req.body.trips.slice(0, 50) : [];
       const sanitized = trips.map(trip => ({
         id: Number(trip.id) || Date.now(),
-        origin: String(trip.origin || '').trim().slice(0, 80),
-        destination: String(trip.destination || '').trim().slice(0, 80),
+        origin: String(trip.origin || '').trim().toUpperCase().slice(0, 3),
+        destination: String(trip.destination || '').trim().toUpperCase().slice(0, 3),
         departure: String(trip.departure || '').slice(0, 10),
         return: String(trip.return || '').slice(0, 10),
         adults: Math.min(9, Math.max(1, Number(trip.adults) || 1)),
@@ -39,23 +35,20 @@ module.exports = async function handler(req, res) {
         preference: ['cash', 'points', 'mixed'].includes(trip.preference) ? trip.preference : 'mixed',
         channel: ['email', 'whatsapp', 'both'].includes(trip.channel) ? trip.channel : 'email',
         frequency: ['instant', 'daily', 'weekly'].includes(trip.frequency) ? trip.frequency : 'instant',
+        agentSuggestions: trip.agentSuggestions !== false,
+        extraAlternative: Boolean(trip.extraAlternative),
         active: trip.active !== false,
         bestPrice: Number(trip.bestPrice) || null,
         lastCheckedAt: trip.lastCheckedAt || null,
         lastAlertAt: trip.lastAlertAt || null,
         lastError: trip.lastError || null,
+        lastSuggestion: trip.lastSuggestion || null,
         createdAt: trip.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
-      })).filter(trip => trip.origin && trip.destination && /^\d{4}-\d{2}-\d{2}$/.test(trip.departure));
+      })).filter(trip => /^[A-Z]{3}$/.test(trip.origin) && /^[A-Z]{3}$/.test(trip.destination) && /^\d{4}-\d{2}-\d{2}$/.test(trip.departure));
 
       const body = JSON.stringify({ clientId, trips: sanitized, updatedAt: new Date().toISOString() });
-      await put(pathFor(clientId), body, {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        contentType: 'application/json',
-        cacheControlMaxAge: 0
-      });
+      await put(pathFor(clientId), body, { access: 'public', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 0 });
       return res.status(200).json({ ok: true, trips: sanitized });
     }
 
