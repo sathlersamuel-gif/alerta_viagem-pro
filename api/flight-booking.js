@@ -43,11 +43,32 @@ function airlineMatches(choice, requestedAirline) {
   return airline.includes(wanted) || wanted.includes(airline) || seller.includes(wanted) || wanted.includes(seller) || url.includes(wanted);
 }
 
+function isGoogleUrl(value) {
+  try {
+    const hostname = new URL(String(value || '')).hostname.toLowerCase();
+    return hostname === 'google.com' || hostname.endsWith('.google.com') || hostname === 'googleusercontent.com' || hostname.endsWith('.googleusercontent.com');
+  } catch {
+    return true;
+  }
+}
+
 function chooseBookingRequest(data, requestedAirline) {
   const choices = (data.booking_options || []).flatMap(option => bookingParts(option));
-  const valid = choices.filter(choice => choice?.booking_request?.url);
-  if (!requestedAirline) return valid.find(choice => choice.airline) || valid[0] || null;
-  return valid.find(choice => airlineMatches(choice, requestedAirline)) || null;
+  const directChoices = choices.filter(choice => {
+    const url = choice?.booking_request?.url;
+    return url && !isGoogleUrl(url);
+  });
+
+  if (!directChoices.length) return null;
+
+  if (requestedAirline) {
+    const exactChoice = directChoices.find(choice => airlineMatches(choice, requestedAirline));
+    if (exactChoice) return exactChoice;
+  }
+
+  return directChoices.find(choice => choice.airline)
+    || directChoices.find(choice => choice.seller)
+    || directChoices[0];
 }
 
 function htmlEscape(value) {
@@ -98,7 +119,7 @@ module.exports = async function handler(req, res) {
     if (!bookingToken) throw new Error('A companhia não forneceu um link direto para este itinerário.');
     const bookingData = await serpSearch(new URLSearchParams({ booking_token: bookingToken }), apiKey);
     const choice = chooseBookingRequest(bookingData, requestedAirline);
-    if (!choice) throw new Error(`Não encontrei uma opção de reserva direta na ${requestedAirline || 'companhia selecionada'} para esta tarifa.`);
+    if (!choice) throw new Error('Esta tarifa não possui link direto de companhia ou agência. Escolha outra oferta disponível.');
 
     const page = submitPage(choice.booking_request);
     if (page.redirect) return res.redirect(302, page.redirect);
