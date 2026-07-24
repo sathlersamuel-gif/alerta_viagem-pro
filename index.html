@@ -25,6 +25,7 @@
         <button class="nav-item active" data-view="dashboard"><span>⌂</span>Visão geral</button>
         <button class="nav-item" data-view="search"><span>⌕</span>Nova busca</button>
         <button class="nav-item" data-view="saved"><span>◎</span>Minhas buscas</button>
+        <button class="nav-item" data-view="travel-management"><span>◷</span>Gerenciamento de viagens</button>
         <button class="nav-item" data-view="alerts"><span>◉</span>Alertas</button>
         <button class="nav-item" data-view="admin"><span>◇</span>Administração</button>
       </nav>
@@ -40,73 +41,33 @@
       </header>
 
       <section class="view active" id="view-dashboard">
-        <div class="hero-panel glass">
-          <div class="hero-copy"><span class="pill glow">IA DE OPORTUNIDADES</span><h2>Viaje melhor usando seus pontos e seu dinheiro.</h2><p>Compare passagens, hotéis e pacotes completos. Escolha exatamente quais programas de fidelidade devem ser monitorados.</p><button class="primary" data-go="search">Começar uma busca <span>→</span></button></div>
-          <div class="orb"><div class="orb-core">✦</div><span class="orbit o1"></span><span class="orbit o2"></span><span class="orbit o3"></span></div>
-        </div>
-
-        <div class="stats-grid">
-          <article class="stat-card glass"><span class="stat-icon">⌕</span><div><small>Buscas salvas</small><strong id="statSearches">0</strong><em>monitoramento configurado</em></div></article>
-          <article class="stat-card glass"><span class="stat-icon">◉</span><div><small>Alertas automáticos</small><strong id="statAlerts">0</strong><em>canal ainda não conectado</em></div></article>
-          <article class="stat-card glass"><span class="stat-icon">✦</span><div><small>Melhor economia</small><strong id="statSaving">R$ 0</strong><em>preços reais encontrados</em></div></article>
-          <article class="stat-card glass"><span class="stat-icon">◇</span><div><small>Pontos cadastrados</small><strong id="statPoints">160 mil</strong><em>programas selecionados</em></div></article>
-        </div>
-
-        <div class="two-col">
-          <section class="panel glass"><div class="panel-head"><div><span class="eyebrow">OPORTUNIDADES</span><h3>Ofertas em destaque</h3></div><button class="text-btn" data-go="search">Ver todas →</button></div><div id="dealList" class="deal-list"></div></section>
-          <section class="panel glass"><div class="panel-head"><div><span class="eyebrow">SEUS PONTOS</span><h3>Carteira de fidelidade</h3></div><button class="text-btn" data-open="wallet">Editar</button></div><div class="wallet-list" id="walletList"></div></section>
-        </div>
+        <div class="hero-panel glass"><div class="hero-copy"><span class="pill glow">IA DE OPORTUNIDADES</span><h2>Viaje melhor usando seus pontos e seu dinheiro.</h2><p>Compare passagens, hotéis e pacotes completos. Escolha exatamente quais programas de fidelidade devem ser monitorados.</p><button class="primary" data-go="search">Começar uma busca <span>→</span></button></div><div class="orb"><div class="orb-core">✦</div><span class="orbit o1"></span><span class="orbit o2"></span><span class="orbit o3"></span></div></div>
+        <div class="stats-grid"><article class="stat-card glass"><span class="stat-icon">⌕</span><div><small>Buscas salvas</small><strong id="statSearches">0</strong><em>monitoramento configurado</em></div></article><article class="stat-card glass"><span class="stat-icon">◉</span><div><small>Alertas automáticos</small><strong id="statAlerts">0</strong><em>canal ainda não conectado</em></div></article><article class="stat-card glass"><span class="stat-icon">✦</span><div><small>Melhor economia</small><strong id="statSaving">R$ 0</strong><em>preços reais encontrados</em></div></article><article class="stat-card glass"><span class="stat-icon">◇</span><div><small>Pontos cadastrados</small><strong id="statPoints">160 mil</strong><em>programas selecionados</em></div></article></div>
+        <div class="two-col"><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">OPORTUNIDADES</span><h3>Ofertas em destaque</h3></div><button class="text-btn" data-go="search">Ver todas →</button></div><div id="dealList" class="deal-list"></div></section><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">SEUS PONTOS</span><h3>Carteira de fidelidade</h3></div><button class="text-btn" data-open="wallet">Editar</button></div><div class="wallet-list" id="walletList"></div></section></div>
       </section>
 
-      <section class="view" id="view-search">
-        <div class="search-layout">
-          <form id="searchForm" class="panel glass search-form">
-            <div class="panel-head"><div><span class="eyebrow">BUSCA INTELIGENTE</span><h3>Monte sua viagem</h3></div><span class="step-badge">1 de 1</span></div>
-            <div class="form-grid">
-              <div class="field span-2 autocomplete-wrap"><label>Origem</label><div class="input-icon"><span>⌖</span><input id="origin" autocomplete="off" placeholder="Digite a cidade ou aeroporto" required /></div><div class="suggestions" id="originSuggestions"></div></div>
-              <div class="field span-2 autocomplete-wrap"><label>Destino</label><div class="input-icon"><span>⌖</span><input id="destination" autocomplete="off" placeholder="Digite a cidade ou aeroporto" /></div><div class="suggestions" id="destinationSuggestions"></div></div>
-              <label class="switch-line span-4"><input type="checkbox" id="anyDestination"><span class="switch"></span><span><b>Encontrar qualquer destino barato</b><small>A IA procura automaticamente as melhores oportunidades.</small></span></label>
-              <div class="field"><label>Ida</label><input type="date" id="departure" required></div>
-              <div class="field"><label>Volta</label><input type="date" id="return"></div>
-              <div class="field"><label>Adultos</label><div class="counter"><button type="button" data-counter="adults" data-delta="-1">−</button><input id="adults" value="1" readonly><button type="button" data-counter="adults" data-delta="1">+</button></div></div>
-              <div class="field"><label>Crianças</label><div class="counter"><button type="button" data-counter="children" data-delta="-1">−</button><input id="children" value="0" readonly><button type="button" data-counter="children" data-delta="1">+</button></div></div>
-              <div id="childAges" class="child-ages span-4 hidden"></div>
-              <div class="field span-2"><label>Como prefere pagar?</label><select id="preference"><option value="cash">Dinheiro</option><option value="points">Pontos reais do programa</option><option value="mixed">Pontos + dinheiro reais</option><option value="best">Comparar todas as opções reais</option></select></div>
-              <div class="field span-2"><label>Tipo de busca</label><select id="tripType"><option value="complete">Voo + hotel (pacote completo)</option><option value="flight">Somente passagem aérea</option><option value="hotel">Somente hotel</option></select></div>
-              <div class="field span-4 hidden" id="loyaltyProgramField"><label>Programa de fidelidade a monitorar</label><select id="loyaltyProgram"><option value="azul" selected>Somente Azul Fidelidade</option><option value="latam">Somente LATAM Pass</option><option value="smiles">Somente Smiles</option><option value="all">Todos os programas selecionados</option></select><small id="loyaltyProgramHelp">Quando Azul estiver selecionada, resultados de LATAM e Smiles não serão mostrados.</small></div>
-            </div>
-            <div class="search-footer"><div><b>Resultados reais, sem estimativas</b><small>O sistema pesquisa rotas nacionais e internacionais por cidade ou código IATA.</small></div><button class="primary" type="submit"><span>✦</span> Analisar melhores opções</button></div>
-          </form>
-
-          <aside class="panel glass ai-side"><span class="pill glow">ASSISTENTE IA</span><h3>O que será analisado?</h3><ul><li><i>✓</i>Preço total para todos</li><li><i>✓</i>Pontos reais do programa escolhido</li><li><i>✓</i>Taxas, escalas e bagagem</li><li><i>✓</i>Voo, hotel e pacote</li><li><i>✓</i>Rotas nacionais e internacionais</li></ul><div class="ai-note"><span>✦</span><p>Nenhum valor em pontos será inventado ou calculado por estimativa.</p></div></aside>
-        </div>
-        <section id="resultsPanel" class="panel glass results-panel hidden"><div class="panel-head"><div><span class="eyebrow">ANÁLISE CONCLUÍDA</span><h3>Melhores opções encontradas</h3></div><div class="results-actions"><button id="saveSearch" class="secondary">Salvar busca</button><button id="exportResults" class="secondary">Exportar resumo</button></div></div><div id="aiRecommendation" class="recommendation"></div><div id="resultCards" class="result-grid"></div></section>
-      </section>
-
+      <section class="view" id="view-search"><div class="search-layout"><form id="searchForm" class="panel glass search-form"><div class="panel-head"><div><span class="eyebrow">BUSCA INTELIGENTE</span><h3>Monte sua viagem</h3></div><span class="step-badge">1 de 1</span></div><div class="form-grid"><div class="field span-2 autocomplete-wrap"><label>Origem</label><div class="input-icon"><span>⌖</span><input id="origin" autocomplete="off" placeholder="Digite a cidade ou aeroporto" required /></div><div class="suggestions" id="originSuggestions"></div></div><div class="field span-2 autocomplete-wrap"><label>Destino</label><div class="input-icon"><span>⌖</span><input id="destination" autocomplete="off" placeholder="Digite a cidade ou aeroporto" /></div><div class="suggestions" id="destinationSuggestions"></div></div><label class="switch-line span-4"><input type="checkbox" id="anyDestination"><span class="switch"></span><span><b>Encontrar qualquer destino barato</b><small>A IA procura automaticamente as melhores oportunidades.</small></span></label><div class="field"><label>Ida</label><input type="date" id="departure" required></div><div class="field"><label>Volta</label><input type="date" id="return"></div><div class="field"><label>Adultos</label><div class="counter"><button type="button" data-counter="adults" data-delta="-1">−</button><input id="adults" value="1" readonly><button type="button" data-counter="adults" data-delta="1">+</button></div></div><div class="field"><label>Crianças</label><div class="counter"><button type="button" data-counter="children" data-delta="-1">−</button><input id="children" value="0" readonly><button type="button" data-counter="children" data-delta="1">+</button></div></div><div id="childAges" class="child-ages span-4 hidden"></div><div class="field span-2"><label>Como prefere pagar?</label><select id="preference"><option value="cash">Dinheiro</option><option value="points">Pontos reais do programa</option><option value="mixed">Pontos + dinheiro reais</option><option value="best">Comparar todas as opções reais</option></select></div><div class="field span-2"><label>Tipo de busca</label><select id="tripType"><option value="complete">Voo + hotel (pacote completo)</option><option value="flight">Somente passagem aérea</option><option value="hotel">Somente hotel</option></select></div><div class="field span-4 hidden" id="loyaltyProgramField"><label>Programa de fidelidade a monitorar</label><select id="loyaltyProgram"><option value="azul" selected>Somente Azul Fidelidade</option><option value="latam">Somente LATAM Pass</option><option value="smiles">Somente Smiles</option><option value="all">Todos os programas selecionados</option></select><small id="loyaltyProgramHelp">Quando Azul estiver selecionada, resultados de LATAM e Smiles não serão mostrados.</small></div></div><div class="search-footer"><div><b>Resultados reais, sem estimativas</b><small>O sistema pesquisa rotas nacionais e internacionais por cidade ou código IATA.</small></div><button class="primary" type="submit"><span>✦</span> Analisar melhores opções</button></div></form><aside class="panel glass ai-side"><span class="pill glow">ASSISTENTE IA</span><h3>O que será analisado?</h3><ul><li><i>✓</i>Preço total para todos</li><li><i>✓</i>Pontos reais do programa escolhido</li><li><i>✓</i>Taxas, escalas e bagagem</li><li><i>✓</i>Voo, hotel e pacote</li><li><i>✓</i>Rotas nacionais e internacionais</li></ul><div class="ai-note"><span>✦</span><p>Nenhum valor em pontos será inventado ou calculado por estimativa.</p></div></aside></div><section id="resultsPanel" class="panel glass results-panel hidden"><div class="panel-head"><div><span class="eyebrow">ANÁLISE CONCLUÍDA</span><h3>Melhores opções encontradas</h3></div><div class="results-actions"><button id="saveSearch" class="secondary">Salvar busca</button><button id="exportResults" class="secondary">Exportar resumo</button></div></div><div id="aiRecommendation" class="recommendation"></div><div id="resultCards" class="result-grid"></div></section></section>
       <section class="view" id="view-saved"><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">MONITORAMENTO</span><h3>Minhas buscas</h3></div><button class="primary compact" data-go="search">+ Nova busca</button></div><div id="savedList" class="saved-list"></div></section></section>
-
-      <section class="view" id="view-alerts"><div class="two-col alerts-layout"><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">PREFERÊNCIAS</span><h3>Notificações</h3></div><span id="alertStatus">Configuração local</span></div><div id="alertControls" class="alert-controls"></div><p class="info-note">Estas opções ficam salvas no aparelho. O envio automático fora do aplicativo ainda depende da conexão com WhatsApp/e-mail e de uma rotina agendada no servidor.</p></section><section class="panel glass"><span class="pill glow">CANAIS</span><h3>Como você quer ser avisado?</h3><div class="channel-card"><span>◉</span><div><b>WhatsApp</b><small>Avisos rápidos de oportunidades</small></div><em>Ainda não conectado</em></div><div class="channel-card"><span>✉</span><div><b>E-mail</b><small>Resumo completo com comparação</small></div><em>Ainda não conectado</em></div><p class="info-note">Quando os canais forem conectados, o servidor poderá pesquisar periodicamente e avisar mesmo com o aplicativo fechado.</p></section></div></section>
-
+      <section class="view" id="view-alerts"><div class="two-col alerts-layout"><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">PREFERÊNCIAS</span><h3>Notificações</h3></div><span id="alertStatus">Configuração local</span></div><div id="alertControls" class="alert-controls"></div><p class="info-note">Estas opções ficam salvas no aparelho.</p></section><section class="panel glass"><span class="pill glow">CANAIS</span><h3>Como você quer ser avisado?</h3><div class="channel-card"><span>◉</span><div><b>WhatsApp</b><small>Avisos rápidos de oportunidades</small></div><em>Ainda não conectado</em></div><div class="channel-card"><span>✉</span><div><b>E-mail</b><small>Resumo completo com comparação</small></div><em>Ainda não conectado</em></div></section></div></section>
       <section class="view" id="view-admin"><div class="admin-stats stats-grid"><article class="stat-card glass"><span class="stat-icon">◇</span><div><small>Usuários</small><strong>12</strong><em>8 ativos</em></div></article><article class="stat-card glass"><span class="stat-icon">◷</span><div><small>Pendentes</small><strong>3</strong><em>aguardando análise</em></div></article><article class="stat-card glass"><span class="stat-icon">⊘</span><div><small>Bloqueados</small><strong>1</strong><em>acesso suspenso</em></div></article><article class="stat-card glass"><span class="stat-icon">R$</span><div><small>Planos ativos</small><strong>8</strong><em>receita recorrente</em></div></article></div><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">GESTÃO</span><h3>Usuários e planos</h3></div><button class="primary compact">+ Novo usuário</button></div><div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Plano</th><th>Status</th><th>Vencimento</th><th>Ações</th></tr></thead><tbody id="userTable"></tbody></table></div></section></section>
     </main>
   </div>
-
   <dialog id="walletDialog"><form method="dialog" class="modal glass"><div class="panel-head"><div><span class="eyebrow">CARTEIRA</span><h3>Saldo de pontos</h3></div><button class="icon-btn">×</button></div><div id="walletInputs" class="wallet-inputs"></div><button id="saveWallet" class="primary" value="default">Salvar carteira</button></form></dialog>
   <div id="toast" class="toast"></div>
-  <script src="app.js"></script>
-  <script src="international-airports.js?v=1"></script>
-  <script src="fixes.js?v=4"></script>
-  <script src="ui-fixes.js?v=1"></script>
-  <script src="travelers.js?v=4"></script>
-  <script src="points-balance.js?v=1"></script>
-  <script src="featured-offers.js?v=7"></script>
-  <script src="ai-monitor.js?v=1"></script>
-  <script src="guardian-mode.js?v=2"></script>
-  <script src="trip-type-fix.js?v=2"></script>
-  <script src="smart-search.js?v=1"></script>
-  <script src="travel-management.js?v=5"></script>
-  <script src="world-airport-search.js?v=2"></script>
-  <script src="travel-monitor-sync.js?v=3"></script>
-  <script src="mobile-navigation-fix.js?v=1"></script>
+  <script src="app.js?v=2"></script>
+  <script src="international-airports.js?v=2"></script>
+  <script src="fixes.js?v=5"></script>
+  <script src="ui-fixes.js?v=2"></script>
+  <script src="travelers.js?v=5"></script>
+  <script src="points-balance.js?v=2"></script>
+  <script src="featured-offers.js?v=8"></script>
+  <script src="ai-monitor.js?v=2"></script>
+  <script src="guardian-mode.js?v=3"></script>
+  <script src="trip-type-fix.js?v=3"></script>
+  <script src="smart-search.js?v=2"></script>
+  <script src="travel-management.js?v=6"></script>
+  <script src="world-airport-search.js?v=3"></script>
+  <script src="travel-monitor-sync.js?v=4"></script>
+  <script src="mobile-navigation-fix.js?v=2"></script>
 </body>
 </html>
