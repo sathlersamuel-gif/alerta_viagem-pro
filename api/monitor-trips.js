@@ -65,7 +65,16 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ error: 'Não autorizado.' });
   }
   if (!process.env.BLOB_READ_WRITE_TOKEN || !process.env.SERPAPI_API_KEY) {
-    return res.status(503).json({ error: 'Banco online ou SerpApi ainda não configurados.' });
+    const missing = [];
+    if (!process.env.BLOB_READ_WRITE_TOKEN) missing.push('BLOB_READ_WRITE_TOKEN');
+    if (!process.env.SERPAPI_API_KEY) missing.push('SERPAPI_API_KEY');
+    return res.status(200).json({
+      ok: false,
+      configured: false,
+      skipped: true,
+      missing,
+      message: 'Monitoramento aguardando configuração das variáveis de ambiente.'
+    });
   }
 
   const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
