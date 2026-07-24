@@ -1,7 +1,14 @@
 {
   "functions": {
-    "api/flights.js": { "maxDuration": 30 }
+    "api/flights.js": { "maxDuration": 30 },
+    "api/monitor-trips.js": { "maxDuration": 60 }
   },
+  "crons": [
+    {
+      "path": "/api/monitor-trips",
+      "schedule": "0 */6 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
