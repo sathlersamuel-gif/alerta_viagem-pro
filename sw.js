@@ -1,4 +1,4 @@
-const CACHE = 'alerta-viagem-pro-v8';
+const CACHE = 'alerta-viagem-pro-v9';
 const APP_SHELL = [
   './',
   './index.html',
@@ -13,7 +13,8 @@ const APP_SHELL = [
   './ai-monitor.js?v=2',
   './guardian-mode.js?v=3',
   './trip-type-fix.js?v=3',
-  './smart-search.js?v=2',
+  './smart-search.js?v=3',
+  './booking-links-fix.js?v=1',
   './travel-management.js?v=7',
   './world-airport-search.js?v=3',
   './travel-monitor-sync.js?v=4',
@@ -56,7 +57,7 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    fetch(request, { cache: 'no-store' })
+    fetch(request)
       .then(response => {
         if (response.ok && url.origin === self.location.origin) {
           caches.open(CACHE).then(cache => cache.put(request, response.clone()));
