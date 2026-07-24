@@ -1,0 +1,50 @@
+/* Tela de busca otimizada para iPhone e celulares */
+@media (max-width: 768px){
+  #view-search{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+  .search-layout{display:block!important}
+  .search-form{padding:18px!important;border-radius:22px!important}
+  .search-form .panel-head{align-items:flex-start;margin-bottom:18px}
+  .search-form .panel-head h3{font-size:24px;line-height:1.15}
+  .step-badge{font-size:10px;white-space:nowrap}
+  .form-grid{display:grid!important;grid-template-columns:1fr!important;gap:14px!important}
+  .form-grid>.field,.form-grid>.switch-line,.form-grid>.child-ages,.form-grid>.span-2,.form-grid>.span-4{grid-column:1/-1!important;width:100%!important;min-width:0}
+  .field{gap:8px}
+  .field label{font-size:13px!important;color:#d3e6f5!important}
+  .field input,.field select{height:56px!important;min-height:56px!important;border-radius:15px!important;padding:0 15px!important;font-size:16px!important;line-height:1.2!important;-webkit-appearance:none;appearance:none}
+  .field input[type="date"]{display:block;width:100%;padding-right:12px!important;color-scheme:dark}
+  body.light .field input[type="date"]{color-scheme:light}
+  .input-icon span{top:17px!important;left:15px!important;font-size:18px}
+  .input-icon input{padding-left:45px!important}
+  .suggestions{top:82px!important;border-radius:16px!important;max-height:45vh}
+  .suggestion{padding:15px!important}
+  .switch-line{min-height:68px;padding:14px!important;align-items:center!important;border-radius:16px!important}
+  .switch-line>span:last-child{min-width:0;flex:1}
+  .switch-line b{font-size:14px;line-height:1.25}
+  .switch-line small{font-size:11px!important;line-height:1.35}
+  .counter{grid-template-columns:54px 1fr 54px!important;height:56px}
+  .counter button{min-width:54px;min-height:56px;font-size:26px!important}
+  .counter input{height:56px!important;font-size:18px!important;font-weight:800}
+  .child-ages{grid-template-columns:1fr!important;padding:14px!important;border-radius:16px!important}
+  #loyaltyProgramField small,#pointsBalanceHelp{font-size:12px!important;line-height:1.45!important;margin-top:4px;color:#a9bfd2}
+  .search-footer{display:grid!important;grid-template-columns:1fr!important;gap:16px!important;margin-top:18px!important;padding-top:18px!important}
+  .search-footer>div{order:2}
+  .search-footer .primary{order:1;width:100%!important;min-height:58px!important;padding:15px 18px!important;font-size:16px!important;border-radius:16px!important}
+  .search-footer b{font-size:15px}
+  .search-footer small{font-size:12px!important;line-height:1.45}
+  .ai-side{margin-top:16px!important;padding:20px!important}
+  .ai-side h3{font-size:21px}
+  .ai-side li{font-size:14px;line-height:1.45}
+  .results-panel{padding:18px!important;border-radius:22px!important}
+  .results-panel .panel-head{display:grid!important;grid-template-columns:1fr!important;gap:14px!important}
+  .results-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;width:100%}
+  .results-actions .secondary{width:100%;min-height:50px;padding:12px!important}
+  .result-grid{grid-template-columns:1fr!important}
+  .result-card{padding:18px!important}
+  .recommendation{font-size:14px;line-height:1.5}
+}
+
+@media (max-width: 390px){
+  .search-form{padding:15px!important}
+  .field input,.field select{font-size:16px!important}
+  .results-actions{grid-template-columns:1fr!important}
+}
