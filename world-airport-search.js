@@ -75,4 +75,11 @@
   const observer = new MutationObserver(initialize);
   observer.observe(document.documentElement, { childList: true, subtree: true });
   initialize();
+
+  if (!document.querySelector('script[data-managed-save-fix]')) {
+    const script = document.createElement('script');
+    script.src = 'travel-management-save-fix.js?v=1';
+    script.dataset.managedSaveFix = 'true';
+    document.head.appendChild(script);
+  }
 })();
