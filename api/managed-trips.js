@@ -27,6 +27,8 @@ module.exports = async function handler(req, res) {
         id: Number(trip.id) || Date.now(),
         origin: String(trip.origin || '').trim().toUpperCase().slice(0, 3),
         destination: String(trip.destination || '').trim().toUpperCase().slice(0, 3),
+        originLabel: String(trip.originLabel || trip.origin || '').trim().slice(0, 160),
+        destinationLabel: String(trip.destinationLabel || trip.destination || '').trim().slice(0, 160),
         departure: String(trip.departure || '').slice(0, 10),
         return: String(trip.return || '').slice(0, 10),
         adults: Math.min(9, Math.max(1, Number(trip.adults) || 1)),
