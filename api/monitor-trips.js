@@ -1,8 +1,10 @@
 const { list, put } = require('@vercel/blob');
 const { Resend } = require('resend');
+const { analyze, KNOWLEDGE_VERSION } = require('../lib/travel-agent-knowledge');
 
 const ALERT_EMAIL = process.env.ALERT_EMAIL || 'sathlersamuel@gmail.com';
 const ALERT_FROM = process.env.ALERT_FROM || 'Alerta Viagem PRO <onboarding@resend.dev>';
+const AZUL_POINTS_URL = 'https://passagens.voeazul.com.br/pt/pontos';
 
 function allFlights(data) {
   return [...(data.best_flights || []), ...(data.other_flights || [])]
@@ -29,9 +31,10 @@ function buildSuggestions(data) {
   return allFlights(data).slice(0, 3).map(summarizeFlight).filter(item => item.price);
 }
 
-function shouldEmail(trip, price, now) {
+function shouldEmail(trip, price, now, decision) {
   const improved = !trip.bestPrice || price < Number(trip.bestPrice);
-  if (!improved) return false;
+  const urgentDecision = ['buy_cash', 'buy_cash_preserve_points', 'use_points'].includes(decision?.action);
+  if (!improved && !urgentDecision) return false;
   if (!trip.lastAlertAt || trip.frequency === 'instant') return true;
   const elapsed = now - new Date(trip.lastAlertAt).getTime();
   if (trip.frequency === 'daily') return elapsed >= 20 * 60 * 60 * 1000;
@@ -53,13 +56,41 @@ async function searchTrip(trip) {
   return { price: suggestions[0]?.price || null, suggestions, data };
 }
 
+function plainText(html = '') {
+  return String(html).replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/&amp;/gi, '&').replace(/\s+/g, ' ').trim();
+}
+
+async function findPublicAzulPoints(trip) {
+  if (!['points', 'mixed'].includes(trip.preference)) return null;
+  try {
+    const response = await fetch(AZUL_POINTS_URL, { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9', 'User-Agent': 'AlertaViagemPro/1.0 (+professional-monitor)' }, cache: 'no-store' });
+    if (!response.ok) return null;
+    const text = plainText(await response.text());
+    const pattern = /([A-Za-zÀ-ÿ .'-]+)\s*\(([A-Z]{3})\)\s*(?:Para)?\s*([A-Za-zÀ-ÿ .'-]+)\s*\(([A-Z]{3})\)\s*(?:Só ida|Ida e volta)?\s*Ida:\s*(\d{2}\/\d{2}\/\d{4})[\s\S]{0,80}?A partir de\s*([\d.,]+)\s*pontos/gi;
+    let match;
+    const candidates = [];
+    while ((match = pattern.exec(text)) !== null) {
+      const [, , origin, , destination, dateBr, pointsRaw] = match;
+      const [day, month, year] = dateBr.split('/');
+      const date = `${year}-${month}-${day}`;
+      if (origin === trip.origin.toUpperCase() && destination === trip.destination.toUpperCase() && date === trip.departure) {
+        candidates.push(Number(pointsRaw.replace(/[^\d]/g, '')));
+      }
+    }
+    const points = candidates.filter(Boolean).sort((a, b) => a - b)[0];
+    return points ? { points, exactInventory: false, source: 'Azul Fidelidade', sourceUrl: AZUL_POINTS_URL } : null;
+  } catch {
+    return null;
+  }
+}
+
 function minutesLabel(value) {
   if (!value) return '';
   const h = Math.floor(value / 60), m = value % 60;
   return `${h}h${m ? ` ${m}min` : ''}`;
 }
 
-async function sendAlert(resend, trip, result, oldPrice) {
+async function sendAlert(resend, trip, result, oldPrice, decision, pointsOffer) {
   const price = result.price;
   const saving = oldPrice && oldPrice > price ? oldPrice - price : null;
   const options = trip.agentSuggestions !== false ? result.suggestions : result.suggestions.slice(0, 1);
@@ -70,8 +101,12 @@ async function sendAlert(resend, trip, result, oldPrice) {
       ${item.departure && item.arrival ? `${item.departure} → ${item.arrival}` : ''}${item.stops === 0 ? ' • voo direto' : ` • ${item.stops} escala(s)`}${item.duration ? ` • ${minutesLabel(item.duration)}` : ''}
     </div>`).join('');
 
-  const subject = `✈️ Oferta encontrada: ${trip.origin} → ${trip.destination} por R$ ${price.toLocaleString('pt-BR')}`;
-  const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#102235"><h2>Alerta Viagem PRO</h2><p>A rota solicitada continua sendo a prioridade:</p><h3>${trip.origin} → ${trip.destination}</h3><p><b>Ida:</b> ${new Date(`${trip.departure}T12:00:00`).toLocaleDateString('pt-BR')}${trip.return ? `<br><b>Volta:</b> ${new Date(`${trip.return}T12:00:00`).toLocaleDateString('pt-BR')}` : ''}</p>${suggestionsHtml}${saving ? `<p>Economia de R$ ${saving.toLocaleString('pt-BR')} em relação ao melhor preço anterior.</p>` : '<p>Este é o primeiro preço real registrado para esta viagem.</p>'}<p><b>Modo agente:</b> ${trip.agentSuggestions !== false ? 'comparou opções úteis da mesma pesquisa, sem consultar destinos aleatórios.' : 'desativado; mostrou somente a melhor opção.'}</p><small>Os preços podem mudar rapidamente e dependem da disponibilidade.</small></div>`;
+  const pointsHtml = pointsOffer
+    ? `<p><b>Referência pública em pontos:</b> ${Number(pointsOffer.points).toLocaleString('pt-BR')} pontos por pessoa. A disponibilidade precisa ser confirmada no programa.</p>`
+    : ['points','mixed'].includes(trip.preference) ? '<p><b>Milhas:</b> não encontrei uma emissão pública confirmada para esta rota e data.</p>' : '';
+
+  const subject = `✈️ ${decision.title}: ${trip.origin} → ${trip.destination}`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#102235"><h2>Alerta Viagem PRO</h2><p><b>Análise profissional:</b> ${decision.reason}</p><h3>${trip.origin} → ${trip.destination}</h3><p><b>Ida:</b> ${new Date(`${trip.departure}T12:00:00`).toLocaleDateString('pt-BR')}${trip.return ? `<br><b>Volta:</b> ${new Date(`${trip.return}T12:00:00`).toLocaleDateString('pt-BR')}` : ''}</p>${pointsHtml}${suggestionsHtml}${saving ? `<p>Economia de R$ ${saving.toLocaleString('pt-BR')} em relação ao melhor preço anterior.</p>` : '<p>Este é o primeiro preço real registrado para esta viagem.</p>'}<p><b>Recomendação:</b> ${decision.title}.</p><small>Conhecimento profissional ${KNOWLEDGE_VERSION}. Preços e disponibilidade devem ser confirmados antes da compra.</small></div>`;
   await resend.emails.send({ from: ALERT_FROM, to: ALERT_EMAIL, subject, html });
 }
 
@@ -101,21 +136,31 @@ module.exports = async function handler(req, res) {
           try {
             if (!/^[A-Z]{3}$/i.test(trip.origin) || !/^[A-Z]{3}$/i.test(trip.destination)) throw new Error('Use códigos IATA de três letras, como CGB, GRU ou GIG.');
             const oldPrice = Number(trip.bestPrice) || null;
-            const result = await searchTrip(trip);
-            trip.lastCheckedAt = new Date().toISOString(); trip.lastError = null;
+            const [result, pointsOffer] = await Promise.all([searchTrip(trip), findPublicAzulPoints(trip)]);
+            const decision = analyze({ trip, cashPrice: result.price, oldBest: oldPrice, flightData: result.data, pointsOffer });
+            trip.lastCheckedAt = new Date().toISOString();
+            trip.lastError = null;
             trip.lastSuggestion = result.suggestions?.[0] || null;
+            trip.lastDecision = decision;
+            trip.lastPointsReference = pointsOffer;
             if (result.price) {
-              if (shouldEmail(trip, result.price, now) && resend && ['email','both'].includes(trip.channel)) {
-                await sendAlert(resend, trip, result, oldPrice); trip.lastAlertAt = new Date().toISOString(); alerts += 1;
+              if (shouldEmail(trip, result.price, now, decision) && resend && ['email','both'].includes(trip.channel)) {
+                await sendAlert(resend, trip, result, oldPrice, decision, pointsOffer);
+                trip.lastAlertAt = new Date().toISOString();
+                alerts += 1;
               }
               if (!oldPrice || result.price < oldPrice) trip.bestPrice = result.price;
             }
-          } catch (error) { trip.lastCheckedAt = new Date().toISOString(); trip.lastError = error.message || 'Erro durante a consulta'; errors += 1; }
+          } catch (error) {
+            trip.lastCheckedAt = new Date().toISOString();
+            trip.lastError = error.message || 'Erro durante a consulta';
+            errors += 1;
+          }
         }
-        await put(new URL(blob.url).pathname.replace(/^\//,''), JSON.stringify({ ...document, trips, updatedAt:new Date().toISOString() }), { access:'public', addRandomSuffix:false, allowOverwrite:true, contentType:'application/json', cacheControlMaxAge:0 });
+        await put(new URL(blob.url).pathname.replace(/^\//,''), JSON.stringify({ ...document, trips, knowledgeVersion: KNOWLEDGE_VERSION, updatedAt:new Date().toISOString() }), { access:'public', addRandomSuffix:false, allowOverwrite:true, contentType:'application/json', cacheControlMaxAge:0 });
       }
     } while (cursor);
-    return res.status(200).json({ ok:true, checked, alerts, errors, emailEnabled:Boolean(resend), agentMode:true, extraQueriesUsed:0 });
+    return res.status(200).json({ ok:true, checked, alerts, errors, emailEnabled:Boolean(resend), agentMode:true, knowledgeVersion:KNOWLEDGE_VERSION, extraSerpApiQueriesUsed:0 });
   } catch (error) {
     console.error('Monitor trips error:', error);
     return res.status(500).json({ error:'Falha ao executar o monitoramento automático.' });
