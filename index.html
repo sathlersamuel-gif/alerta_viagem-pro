@@ -8,6 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="ui-fixes.css?v=1" />
   <title>Alerta Viagem PRO</title>
 </head>
 <body>
@@ -68,10 +69,10 @@
               <div class="field span-2"><label>Como prefere pagar?</label><select id="preference"><option value="best">Melhor custo-benefício</option><option value="points">Comparar em pontos (estimativa)</option><option value="cash">Priorizar dinheiro</option><option value="mixed">Pontos + dinheiro (estimativa)</option></select></div>
               <div class="field span-2"><label>Tipo de busca</label><select id="tripType"><option value="complete">Voo + hotel (pacote completo)</option><option value="flight">Somente passagem aérea</option><option value="hotel">Somente hotel</option></select></div>
             </div>
-            <div class="search-footer"><div><b>Comparação inteligente ativada</b><small>Preços reais em dinheiro e estimativa de equivalência em pontos.</small></div><button class="primary" type="submit"><span>✦</span> Analisar melhores opções</button></div>
+            <div class="search-footer"><div><b>Comparação inteligente ativada</b><small>Preços reais em dinheiro e equivalência estimada em pontos.</small></div><button class="primary" type="submit"><span>✦</span> Analisar melhores opções</button></div>
           </form>
 
-          <aside class="panel glass ai-side"><span class="pill glow">ASSISTENTE IA</span><h3>O que será analisado?</h3><ul><li><i>✓</i>Preço total para todos</li><li><i>✓</i>Estimativa transparente em pontos</li><li><i>✓</i>Taxas, escalas e bagagem</li><li><i>✓</i>Voo, hotel e pacote completo</li><li><i>✓</i>Combinações mais vantajosas</li></ul><div class="ai-note"><span>✦</span><p>Valores em pontos são estimativas até haver integração oficial com os programas de fidelidade.</p></div></aside>
+          <aside class="panel glass ai-side"><span class="pill glow">ASSISTENTE IA</span><h3>O que será analisado?</h3><ul><li><i>✓</i>Preço total para todos</li><li><i>✓</i>Valor estimado de cada ponto</li><li><i>✓</i>Taxas, escalas e bagagem</li><li><i>✓</i>Voo, hotel e pacote</li><li><i>✓</i>Combinações mais vantajosas</li></ul><div class="ai-note"><span>✦</span><p>A recomendação final explica por que uma opção é melhor.</p></div></aside>
         </div>
         <section id="resultsPanel" class="panel glass results-panel hidden"><div class="panel-head"><div><span class="eyebrow">ANÁLISE CONCLUÍDA</span><h3>Melhores opções encontradas</h3></div><div class="results-actions"><button id="saveSearch" class="secondary">Salvar busca</button><button id="exportResults" class="secondary">Exportar resumo</button></div></div><div id="aiRecommendation" class="recommendation"></div><div id="resultCards" class="result-grid"></div></section>
       </section>
@@ -88,5 +89,6 @@
   <div id="toast" class="toast"></div>
   <script src="app.js"></script>
   <script src="fixes.js?v=2"></script>
+  <script src="ui-fixes.js?v=1"></script>
 </body>
 </html>
