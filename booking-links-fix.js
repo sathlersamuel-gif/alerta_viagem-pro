@@ -9,7 +9,8 @@
       arrival_id: arrivalId,
       outbound_date: search?.departure || '',
       adults: String(search?.adults || 1),
-      children: String(search?.children || 0)
+      children: String(search?.children || 0),
+      airline: String(result.name || '')
     });
     if (search?.return) params.set('return_date', search.return);
     if (result.bookingToken) params.set('booking_token', result.bookingToken);
@@ -26,7 +27,7 @@
       const bookingUrl = buildBookingUrl(result, search);
       if (!button || !bookingUrl) return;
       button.dataset.url = bookingUrl;
-      button.textContent = 'Reservar este voo';
+      button.textContent = `Reservar na ${result.name || 'companhia'}`;
       button.onclick = () => window.open(bookingUrl, '_blank', 'noopener,noreferrer');
     });
   };
