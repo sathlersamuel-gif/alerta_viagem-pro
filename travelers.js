@@ -9,7 +9,9 @@
     childAges: [8],
     preference: 'points',
     tripType: 'complete',
-    loyaltyProgram: 'azul'
+    loyaltyProgram: 'azul',
+    randomDestinations: false,
+    nearbyOrigins: true
   };
 
   function readProfile() {
@@ -81,6 +83,8 @@
           <div class="field span-2"><label>Forma preferida</label><select id="profilePreference"><option value="points">Milhas/pontos</option><option value="mixed">Pontos + dinheiro</option><option value="best">Comparar tudo</option><option value="cash">Dinheiro</option></select></div>
           <div class="field span-2"><label>O que deve vir no alerta?</label><select id="profileTripType"><option value="complete">Ida + volta + hotel</option><option value="flight">Somente passagem</option><option value="hotel">Somente hotel</option></select></div>
           <div class="field span-4"><label>Programa de fidelidade</label><select id="profileLoyaltyProgram"><option value="azul">Azul Fidelidade</option><option value="all">Todos disponíveis</option></select></div>
+          <label class="switch-line span-4"><input type="checkbox" id="profileNearbyOrigins"><span class="switch"></span><span><b>Usar aeroportos próximos</b><small>Depois da origem principal, tenta Cacoal, Ji-Paraná, Porto Velho, Vilhena e Cuiabá, sempre para o mesmo destino.</small></span></label>
+          <label class="switch-line span-4"><input type="checkbox" id="profileRandomDestinations"><span class="switch"></span><span><b>Buscar também destinos aleatórios baratos</b><small>Desativado: pesquisa somente o destino escolhido. Ative apenas quando quiser descobrir outros lugares.</small></span></label>
         </div>
         <button class="primary" id="saveTravelerProfile" value="default">Salvar e ativar preferências</button>
       </form>`;
@@ -89,8 +93,10 @@
     function refreshSummary() {
       const current = readProfile();
       const total = Number(current.adults) + Number(current.children);
+      const destinationMode = current.randomDestinations ? 'destino escolhido + oportunidades aleatórias' : 'somente o destino escolhido';
+      const originMode = current.nearbyOrigins ? 'com aeroportos próximos' : 'somente origem principal';
       document.querySelector('#travelerSummary').textContent = current.enabled
-        ? `${total} passageiro(s) • ${current.origin} → ${current.destination} • ${tripLabel(current.tripType)} • preferência: ${preferenceLabel(current.preference)}`
+        ? `${total} passageiro(s) • ${current.origin} → ${current.destination} • ${tripLabel(current.tripType)} • ${preferenceLabel(current.preference)} • ${destinationMode} • ${originMode}`
         : 'Preferências automáticas desativadas. Ative para receber ofertas personalizadas.';
     }
 
@@ -111,6 +117,8 @@
       document.querySelector('#profilePreference').value = current.preference || 'points';
       document.querySelector('#profileTripType').value = current.tripType || 'complete';
       document.querySelector('#profileLoyaltyProgram').value = current.loyaltyProgram || 'azul';
+      document.querySelector('#profileNearbyOrigins').checked = current.nearbyOrigins !== false;
+      document.querySelector('#profileRandomDestinations').checked = current.randomDestinations === true;
       renderChildAges(Number(current.children || 0), current.childAges || []);
       dialog.showModal();
     });
@@ -135,13 +143,15 @@
         childAges: [...document.querySelectorAll('.profile-child-age')].map(input => Number(input.value)),
         preference: document.querySelector('#profilePreference').value,
         tripType: document.querySelector('#profileTripType').value,
-        loyaltyProgram: document.querySelector('#profileLoyaltyProgram').value
+        loyaltyProgram: document.querySelector('#profileLoyaltyProgram').value,
+        nearbyOrigins: document.querySelector('#profileNearbyOrigins').checked,
+        randomDestinations: document.querySelector('#profileRandomDestinations').checked
       };
       document.querySelector('#personalOffersEnabled').checked = true;
       saveProfile(profile);
       refreshSummary();
       dialog.close();
-      window.toast?.('Preferências salvas. A IA já está pesquisando.');
+      window.toast?.(profile.randomDestinations ? 'Preferências salvas. Descoberta de destinos ativada.' : 'Preferências salvas. Busca focada no destino escolhido.');
     });
 
     refreshSummary();
