@@ -1,6 +1,7 @@
 // Correções complementares do Alerta Viagem PRO
 (() => {
   const popularDestinations = ['GRU','GIG','BSB','REC','MCZ','FOR','SSA','CNF','CWB','FLN'];
+  const POINT_VALUE_BRL = 0.025;
 
   function showSearchError(message) {
     const panel = document.querySelector('#resultsPanel');
@@ -13,6 +14,37 @@
       panel.scrollIntoView({behavior:'smooth', block:'start'});
     }
     if (typeof toast === 'function') toast(message);
+  }
+
+  function estimatePoints(cash) {
+    return Math.max(1000, Math.round((Number(cash || 0) / POINT_VALUE_BRL) / 1000) * 1000);
+  }
+
+  function applyPaymentPreference(results, preference) {
+    return results.map(result => {
+      const item = {...result, meta:[...(result.meta || [])]};
+      const cash = Number(item.cash || 0);
+      if (!cash) return item;
+      const points = estimatePoints(cash);
+      const cashLabel = cash.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+
+      if (preference === 'points') {
+        item.originalCashPrice = cashLabel;
+        item.price = `≈ ${points.toLocaleString('pt-BR')} pontos`;
+        item.sub = `Equivalência estimada do preço real de ${cashLabel}`;
+        item.meta.unshift('Estimativa, não emissão confirmada');
+      } else if (preference === 'mixed') {
+        const pointsPart = Math.round((points * 0.7) / 1000) * 1000;
+        const cashPart = cash * 0.3;
+        item.originalCashPrice = cashLabel;
+        item.price = `≈ ${pointsPart.toLocaleString('pt-BR')} pts + ${cashPart.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`;
+        item.sub = `Combinação estimada sobre o preço real de ${cashLabel}`;
+        item.meta.unshift('Combinação estimada');
+      } else if (preference === 'best') {
+        item.meta.push(`Equivale a cerca de ${points.toLocaleString('pt-BR')} pontos`);
+      }
+      return item;
+    });
   }
 
   async function searchAnyDestination(search) {
@@ -107,23 +139,28 @@
 
       let recommendation = '';
       if (currentSearch.any) {
-        currentResults = markBest(await searchAnyDestination(currentSearch));
+        currentResults = await searchAnyDestination(currentSearch);
         recommendation = 'Destinos baratos encontrados automaticamente com preços reais de passagem.';
       } else if (currentSearch.tripType === 'flight') {
-        currentResults = markBest(await searchRealFlights(currentSearch));
+        currentResults = await searchRealFlights(currentSearch);
         recommendation = 'Voos reais encontrados no Google Flights via SerpApi.';
       } else if (currentSearch.tripType === 'hotel') {
-        currentResults = markBest(await searchRealHotels(currentSearch));
+        currentResults = await searchRealHotels(currentSearch);
         recommendation = 'Hotéis reais encontrados no Google Hotels via SerpApi.';
       } else {
-        if (!currentSearch.return) throw new Error('Para uma viagem completa, informe também a data de volta.');
+        if (!currentSearch.return) throw new Error('Para buscar voo + hotel, informe também a data de volta.');
         const [flights, hotels] = await Promise.all([searchRealFlights(currentSearch), searchRealHotels(currentSearch)]);
-        currentResults = markBest(buildPackages(flights, hotels));
-        recommendation = 'Pacotes calculados com preços reais de voo e hotel.';
+        currentResults = buildPackages(flights, hotels);
+        if (!currentResults.length) throw new Error('Não foi possível montar um pacote com voo e hotel para essas datas.');
+        recommendation = 'Pacotes completos calculados com preços reais de voo e hotel.';
       }
 
+      currentResults = markBest(applyPaymentPreference(currentResults, currentSearch.preference));
       renderResults();
-      document.querySelector('#aiRecommendation').innerHTML = `<b>✦ Resultado real:</b> ${recommendation}`;
+      const paymentNote = currentSearch.preference === 'points' || currentSearch.preference === 'mixed'
+        ? ' Os valores em pontos são estimativas de equivalência; a emissão real depende do programa de fidelidade.'
+        : '';
+      document.querySelector('#aiRecommendation').innerHTML = `<b>✦ Resultado:</b> ${recommendation}${paymentNote}`;
       document.querySelector('#resultsPanel').classList.remove('hidden');
       document.querySelector('#resultsPanel').scrollIntoView({behavior:'smooth', block:'start'});
     } catch (error) {
