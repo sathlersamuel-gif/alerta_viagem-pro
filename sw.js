@@ -1,4 +1,4 @@
-const CACHE = 'alerta-viagem-pro-v7';
+const CACHE = 'alerta-viagem-pro-v8';
 const APP_SHELL = [
   './',
   './index.html',
@@ -56,7 +56,7 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-store' })
       .then(response => {
         if (response.ok && url.origin === self.location.origin) {
           caches.open(CACHE).then(cache => cache.put(request, response.clone()));
