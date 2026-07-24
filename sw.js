@@ -1,4 +1,4 @@
-const CACHE = 'alerta-viagem-pro-v11';
+const CACHE = 'alerta-viagem-pro-v12';
 const APP_SHELL = [
   './',
   './index.html',
@@ -14,7 +14,8 @@ const APP_SHELL = [
   './guardian-mode.js?v=3',
   './trip-type-fix.js?v=3',
   './smart-search.js?v=3',
-  './booking-links-fix.js?v=1',
+  './final-results-fix.js?v=1',
+  './booking-links-fix.js?v=2',
   './travel-management.js?v=7',
   './world-airport-search.js?v=3',
   './travel-monitor-sync.js?v=4',
