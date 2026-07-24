@@ -116,7 +116,7 @@
       return;
     }
 
-    box.innerHTML = filtered.map((offer, index) => `
+    box.innerHTML = filtered.map((offer) => `
       <button type="button" class="deal featured-offer" data-featured-index="${offers.indexOf(offer)}">
         <div class="logo">${offer.airline[0]}</div>
         <div class="deal-copy">
@@ -137,7 +137,16 @@
     });
   }
 
-  // Sobrescreve a renderização estática antiga depois que os demais scripts carregarem.
   window.addEventListener('load', () => setTimeout(renderFeaturedOffers, 50));
   document.addEventListener('DOMContentLoaded', () => setTimeout(renderFeaturedOffers, 100));
+
+  // Auditoria consolidada carregada por último para corrigir conflitos dos scripts antigos.
+  const style = document.createElement('link');
+  style.rel = 'stylesheet';
+  style.href = 'audit-fix.css?v=1';
+  document.head.appendChild(style);
+  const script = document.createElement('script');
+  script.src = 'audit-fix.js?v=1';
+  script.defer = true;
+  document.body.appendChild(script);
 })();
