@@ -21,8 +21,10 @@
   try {
     if (typeof buildPackages === 'function') {
       buildPackages = function exactPackages(flights, hotels) {
+        const usableFlights = flights.filter(flight => flight.bookingToken || flight.departureToken);
+        const usableHotels = hotels.filter(hotel => hotel.link);
         const list = [];
-        flights.slice(0, 3).forEach((flight, fi) => hotels.slice(0, 3).forEach((hotel, hi) => {
+        usableFlights.slice(0, 3).forEach((flight, fi) => usableHotels.slice(0, 3).forEach((hotel, hi) => {
           const total = Number(flight.cash || 0) + Number(hotel.cash || 0);
           list.push({
             kind: 'package',
@@ -32,7 +34,7 @@
             price: money(total),
             sub: `Voo ${money(flight.cash)} + hotel ${money(hotel.cash)}`,
             score: Math.max(70, 97 - fi * 3 - hi * 2),
-            meta: [...(flight.meta || []).slice(0, 2), ...(hotel.meta || []).slice(0, 2), 'Reservas feitas separadamente'],
+            meta: [...(flight.meta || []).slice(0, 2), ...(hotel.meta || []).slice(0, 2), 'Links individuais das fontes'],
             best: false,
             cash: total,
             flight,
@@ -54,8 +56,7 @@
       arrival_id: (route[1] || '').slice(0, 3),
       outbound_date: search?.departure || '',
       adults: String(search?.adults || 1),
-      children: String(search?.children || 0),
-      airline: String(result.name || '')
+      children: String(search?.children || 0)
     });
     if (search?.return) params.set('return_date', search.return);
     if (result.bookingToken) params.set('booking_token', result.bookingToken);
@@ -83,6 +84,13 @@
     return element;
   }
 
+  function unavailable(oldAction, text = 'Oferta sem link direto') {
+    oldAction.removeAttribute('data-url');
+    oldAction.disabled = true;
+    oldAction.textContent = text;
+    oldAction.onclick = null;
+  }
+
   function applyExactLinks() {
     const { results, search } = readState();
     const cards = [...document.querySelectorAll('#resultCards .result-card')];
@@ -92,11 +100,20 @@
       const oldAction = card.querySelector('.result-action');
       if (!result || !oldAction) return;
 
+      if (result.kind === 'points') {
+        if (result.sourceUrl) {
+          oldAction.dataset.url = result.sourceUrl;
+          oldAction.textContent = 'Abrir oferta oficial da Azul';
+          oldAction.onclick = () => window.open(result.sourceUrl, '_blank', 'noopener,noreferrer');
+        } else unavailable(oldAction);
+        return;
+      }
+
       if (result.kind === 'flight') {
         const url = buildBookingUrl(result, search);
-        if (!url) return;
+        if (!url) return unavailable(oldAction);
         oldAction.dataset.url = url;
-        oldAction.textContent = `Reservar na ${result.name || 'companhia'}`;
+        oldAction.textContent = `Abrir esta tarifa de ${result.name || 'voo'}`;
         oldAction.onclick = () => window.open(url, '_blank', 'noopener,noreferrer');
         return;
       }
@@ -106,14 +123,15 @@
         actions.className = 'package-exact-actions';
         const flightUrl = buildBookingUrl(result.flight, search);
         const hotelUrl = result.hotel.link || '';
-
-        if (flightUrl) actions.appendChild(button(`Reservar voo na ${result.flight.name}`, 'primary', flightUrl));
-        if (hotelUrl) actions.appendChild(button(`Abrir oferta do ${result.hotel.name}`, 'secondary', hotelUrl));
-        if (actions.children.length) oldAction.replaceWith(actions);
+        if (flightUrl) actions.appendChild(button(`Abrir voo de ${result.flight.name}`, 'primary', flightUrl));
+        if (hotelUrl) actions.appendChild(button(`Abrir hotel: ${result.hotel.name}`, 'secondary', hotelUrl));
+        if (actions.children.length === 2) oldAction.replaceWith(actions);
+        else unavailable(oldAction, 'Pacote sem os dois links diretos');
         return;
       }
 
-      if (result.kind === 'hotel' && result.link) {
+      if (result.kind === 'hotel') {
+        if (!result.link) return unavailable(oldAction);
         oldAction.dataset.url = result.link;
         oldAction.textContent = 'Abrir esta oferta do hotel';
         oldAction.onclick = () => window.open(result.link, '_blank', 'noopener,noreferrer');
@@ -124,5 +142,6 @@
   if (resultsBox) {
     new MutationObserver(() => setTimeout(applyExactLinks, 0))
       .observe(resultsBox, { childList: true, subtree: true });
+    setTimeout(applyExactLinks, 0);
   }
 })();
