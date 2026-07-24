@@ -1,4 +1,4 @@
-// Ofertas em destaque atualizadas com preços reais e abertura da oferta exata.
+// Ofertas em destaque atualizadas com preços reais e abertura do cadastro interno.
 (() => {
   const routes = [
     ['OAL', 'GRU'],
@@ -53,6 +53,34 @@
     if (box) box.innerHTML = '<div class="ai-note"><span>✦</span><p>Atualizando promoções e preços reais...</p></div>';
   }
 
+  function openOfferRegistration(offer) {
+    const managementButton = document.querySelector('[data-view="travel-management"]');
+    if (!managementButton) {
+      window.toast?.('O cadastro de viagens ainda não foi carregado');
+      return;
+    }
+
+    managementButton.click();
+
+    requestAnimationFrame(() => {
+      const newTripButton = document.querySelector('#newManagedTrip');
+      newTripButton?.click();
+
+      const origin = document.querySelector('#managedOrigin');
+      const destination = document.querySelector('#managedDestination');
+      const departure = document.querySelector('#managedDeparture');
+      const returnInput = document.querySelector('#managedReturn');
+
+      if (origin) origin.value = offer.origin || '';
+      if (destination) destination.value = offer.destination || '';
+      if (departure) departure.value = departureDate;
+      if (returnInput) returnInput.value = returnDate;
+
+      document.querySelector('#managedTripFormWrap')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.toast?.('Promoção carregada no cadastro');
+    });
+  }
+
   function renderOffers(offers) {
     const box = document.querySelector('#dealList');
     if (!box) return;
@@ -68,7 +96,7 @@
         <div class="deal-copy">
           <b>${escapeHtml(offer.origin)} → ${escapeHtml(offer.destination)}</b>
           <small>${escapeHtml(offer.airline)} • ida ${departureDate.split('-').reverse().join('/')} • volta ${returnDate.split('-').reverse().join('/')}</small>
-          <em>Toque para abrir esta oferta com rota e datas preenchidas</em>
+          <em>Toque para cadastrar e monitorar esta promoção</em>
         </div>
         <div class="deal-price">
           <strong>R$ ${Number(offer.price).toLocaleString('pt-BR')}</strong>
@@ -80,8 +108,8 @@
     box.querySelectorAll('[data-offer-index]').forEach(button => {
       button.addEventListener('click', () => {
         const offer = offers[Number(button.dataset.offerIndex)];
-        if (!offer?.url) return;
-        window.location.href = offer.url;
+        if (!offer) return;
+        openOfferRegistration(offer);
       });
     });
   }
