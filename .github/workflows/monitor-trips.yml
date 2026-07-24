@@ -10,6 +10,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Consultar viagens monitoradas
+        env:
+          MONITOR_URL: https://alerta-viagem-pro.vercel.app/api/monitor-trips
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl --fail --silent --show-error --max-time 120 \
-            -X POST "https://alerta-viagem-pro.vercel.app/api/monitor-trips"
+          set -euo pipefail
+
+          AUTH_HEADER=()
+          if [ -n "${CRON_SECRET:-}" ]; then
+            AUTH_HEADER=(-H "Authorization: Bearer ${CRON_SECRET}")
+          fi
+
+          HTTP_STATUS=$(curl \
+            --silent \
+            --show-error \
+            --location \
+            --retry 6 \
+            --retry-delay 15 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --max-time 120 \
+            --output response.json \
+            --write-out "%{http_code}" \
+            -X POST \
+            "${AUTH_HEADER[@]}" \
+            "$MONITOR_URL")
+
+          cat response.json || true
+          echo
+          echo "HTTP status: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" = "503" ]; then
+            echo "::warning::Monitoramento aguardando configuração das variáveis BLOB_READ_WRITE_TOKEN e SERPAPI_API_KEY na Vercel."
+            exit 0
+          fi
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::A API de monitoramento respondeu com HTTP $HTTP_STATUS."
+            exit 1
+          fi
