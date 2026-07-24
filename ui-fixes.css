@@ -1,0 +1,28 @@
+/* Melhorias de leitura e toque para iPhone */
+#walletDialog{width:min(94vw,560px);max-width:560px;border:0;padding:0;background:transparent;color:#fff}
+#walletDialog::backdrop{background:rgba(0,7,16,.82);backdrop-filter:blur(5px)}
+#walletDialog .modal{width:100%;max-height:82vh;overflow:auto;padding:22px;background:#0d2238;border:1px solid rgba(94,190,255,.32);box-shadow:0 24px 80px rgba(0,0,0,.62)}
+#walletDialog .panel-head h3{color:#fff;font-size:22px}
+#walletDialog .wallet-inputs{display:grid;gap:12px}
+#walletDialog .wallet-input{display:grid;gap:7px;padding:14px;border-radius:14px;background:#102c48;border:1px solid rgba(115,196,255,.25)}
+#walletDialog .wallet-input span{color:#eef8ff;font-size:14px;font-weight:800}
+#walletDialog .wallet-input input{width:100%;height:50px;border-radius:12px;border:1px solid rgba(115,196,255,.32);background:#061522;color:#fff;font-size:18px;font-weight:800;padding:0 14px;outline:none;-webkit-appearance:none}
+#walletDialog .wallet-input input:focus{border-color:#38d9ff;box-shadow:0 0 0 3px rgba(56,217,255,.12)}
+#walletDialog #saveWallet{width:100%;margin-top:16px;min-height:50px}
+#walletDialog .icon-btn{color:#fff;background:#17324f}
+
+.deal{position:relative;cursor:pointer;touch-action:manipulation;transition:transform .16s ease,border-color .16s ease,background .16s ease;padding-right:42px}
+.deal:hover,.deal:active,.deal:focus-visible{transform:translateY(-1px);border-color:rgba(56,217,255,.48);background:rgba(56,217,255,.07);outline:none}
+.deal::after{content:'›';position:absolute;right:15px;top:50%;transform:translateY(-50%);font-size:28px;color:#38d9ff;font-weight:700}
+.deal .deal-copy small::after{content:' • Toque para buscar';color:#38d9ff}
+
+@media(max-width:700px){
+  #walletDialog{width:calc(100vw - 24px)}
+  #walletDialog .modal{padding:18px;border-radius:20px}
+  .wallet-item{padding:16px 14px;min-height:76px}
+  .wallet-item b{font-size:17px;color:#fff}
+  .wallet-item small{font-size:13px!important;color:#b7cce0!important}
+  .deal{min-height:92px;align-items:center;padding:15px 38px 15px 14px}
+  .deal-copy b{font-size:17px}
+  .deal-price strong{font-size:16px}
+}
