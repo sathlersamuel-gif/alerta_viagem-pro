@@ -3,6 +3,69 @@ const { put, list } = require('@vercel/blob');
 const CLIENT_PATTERN = /^[a-f0-9]{32}$/;
 const pathFor = clientId => `monitoring/${clientId}.json`;
 
+function summarizeFlight(item) {
+  const legs = Array.isArray(item?.flights) ? item.flights : [];
+  const first = legs[0] || {};
+  const last = legs[legs.length - 1] || {};
+  const airlines = [...new Set(legs.map(leg => leg.airline).filter(Boolean))];
+  return {
+    price: Number(item?.price) || null,
+    airline: airlines.join(' + ') || 'Companhia não informada',
+    departure: first.departure_airport?.time || '',
+    arrival: last.arrival_airport?.time || '',
+    stops: Math.max(0, legs.length - 1),
+    duration: Number(item?.total_duration) || null
+  };
+}
+
+async function checkTrip(trip) {
+  if (!trip.active || !process.env.SERPAPI_API_KEY) return trip;
+
+  try {
+    const params = new URLSearchParams({
+      engine: 'google_flights',
+      api_key: process.env.SERPAPI_API_KEY,
+      hl: 'pt',
+      gl: 'br',
+      currency: 'BRL',
+      type: trip.return ? '1' : '2',
+      departure_id: trip.origin,
+      arrival_id: trip.destination,
+      outbound_date: trip.departure,
+      adults: String(trip.adults || 1),
+      children: String(trip.children || 0),
+      sort_by: '2'
+    });
+    if (trip.return) params.set('return_date', trip.return);
+
+    const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store'
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.error) throw new Error(data.error || 'Falha na consulta de voos.');
+
+    const flights = [...(data.best_flights || []), ...(data.other_flights || [])]
+      .filter(item => Number(item.price) > 0)
+      .sort((a, b) => Number(a.price) - Number(b.price));
+
+    trip.lastCheckedAt = new Date().toISOString();
+    trip.lastError = null;
+    trip.lastSuggestion = flights[0] ? summarizeFlight(flights[0]) : null;
+    if (flights[0]) {
+      const price = Number(flights[0].price);
+      trip.currentPrice = price;
+      if (!trip.bestPrice || price < Number(trip.bestPrice)) trip.bestPrice = price;
+    } else {
+      trip.lastError = 'Nenhum voo com preço disponível foi encontrado nesta consulta.';
+    }
+  } catch (error) {
+    trip.lastCheckedAt = new Date().toISOString();
+    trip.lastError = error.message || 'Erro durante a consulta de voos.';
+  }
+  return trip;
+}
+
 module.exports = async function handler(req, res) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return res.status(503).json({ error: 'O banco online ainda não foi conectado ao projeto na Vercel.' });
@@ -23,7 +86,7 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'POST') {
       const trips = Array.isArray(req.body?.trips) ? req.body.trips.slice(0, 50) : [];
-      const sanitized = trips.map(trip => ({
+      let sanitized = trips.map(trip => ({
         id: Number(trip.id) || Date.now(),
         origin: String(trip.origin || '').trim().toUpperCase().slice(0, 3),
         destination: String(trip.destination || '').trim().toUpperCase().slice(0, 3),
@@ -41,6 +104,7 @@ module.exports = async function handler(req, res) {
         extraAlternative: Boolean(trip.extraAlternative),
         active: trip.active !== false,
         bestPrice: Number(trip.bestPrice) || null,
+        currentPrice: Number(trip.currentPrice) || null,
         lastCheckedAt: trip.lastCheckedAt || null,
         lastAlertAt: trip.lastAlertAt || null,
         lastError: trip.lastError || null,
@@ -48,6 +112,8 @@ module.exports = async function handler(req, res) {
         createdAt: trip.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })).filter(trip => /^[A-Z]{3}$/.test(trip.origin) && /^[A-Z]{3}$/.test(trip.destination) && /^\d{4}-\d{2}-\d{2}$/.test(trip.departure));
+
+      sanitized = await Promise.all(sanitized.map(checkTrip));
 
       const body = JSON.stringify({ clientId, trips: sanitized, updatedAt: new Date().toISOString() });
       await put(pathFor(clientId), body, { access: 'public', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 0 });
