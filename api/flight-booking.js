@@ -35,40 +35,73 @@ function bookingParts(option) {
 }
 
 function airlineMatches(choice, requestedAirline) {
-  if (!requestedAirline) return true;
+  if (!requestedAirline) return false;
   const wanted = normalize(requestedAirline);
-  const airline = normalize(choice?.airline);
-  const seller = normalize(choice?.seller);
-  const url = normalize(choice?.booking_request?.url);
-  return airline.includes(wanted) || wanted.includes(airline) || seller.includes(wanted) || wanted.includes(seller) || url.includes(wanted);
+  if (!wanted) return false;
+  const values = [choice?.airline, choice?.seller, choice?.booking_request?.url]
+    .map(normalize)
+    .filter(Boolean);
+  return values.some(value => value.includes(wanted) || wanted.includes(value));
 }
 
-function isGoogleUrl(value) {
+function isBlockedRedirect(value) {
   try {
-    const hostname = new URL(String(value || '')).hostname.toLowerCase();
-    return hostname === 'google.com' || hostname.endsWith('.google.com') || hostname === 'googleusercontent.com' || hostname.endsWith('.googleusercontent.com');
+    const hostname = new URL(String(value || '')).hostname.toLowerCase().replace(/^www\./, '');
+    const blocked = [
+      'google.com', 'googleusercontent.com', 'googleadservices.com',
+      'googlesyndication.com', 'doubleclick.net', 'g.co', 'goo.gl'
+    ];
+    return blocked.some(domain => hostname === domain || hostname.endsWith(`.${domain}`));
   } catch {
     return true;
   }
 }
 
-function chooseBookingRequest(data, requestedAirline) {
-  const choices = (data.booking_options || []).flatMap(option => bookingParts(option));
-  const directChoices = choices.filter(choice => {
-    const url = choice?.booking_request?.url;
-    return url && !isGoogleUrl(url);
-  });
+function priceNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const normalized = String(value || '')
+    .replace(/[^0-9,.-]/g, '')
+    .replace(/\.(?=\d{3}(?:\D|$))/g, '')
+    .replace(',', '.');
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : 0;
+}
 
-  if (!directChoices.length) return null;
+function directChoices(data) {
+  const seen = new Set();
+  return (data.booking_options || [])
+    .flatMap(option => bookingParts(option))
+    .filter(choice => {
+      const request = choice?.booking_request;
+      if (!request?.url || isBlockedRedirect(request.url)) return false;
+      const key = `${request.url}|${request.post_data || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
 
-  if (requestedAirline) {
-    const exactChoice = directChoices.find(choice => airlineMatches(choice, requestedAirline));
-    if (exactChoice) return exactChoice;
+function chooseBookingRequest(data, requestedAirline, targetPrice) {
+  const choices = directChoices(data);
+  if (!choices.length) return null;
+
+  const airlineChoices = requestedAirline
+    ? choices.filter(choice => airlineMatches(choice, requestedAirline))
+    : [];
+  const pool = airlineChoices.length ? airlineChoices : choices;
+  const wantedPrice = priceNumber(targetPrice);
+
+  if (wantedPrice > 0) {
+    const priced = pool
+      .map(choice => ({ choice, difference: Math.abs(priceNumber(choice.price) - wantedPrice) }))
+      .filter(item => priceNumber(item.choice.price) > 0)
+      .sort((a, b) => a.difference - b.difference);
+    if (priced.length) return priced[0].choice;
   }
 
-  return directChoices.find(choice => choice.airline)
-    || directChoices.find(choice => choice.seller)
-    || directChoices[0];
+  return pool.find(choice => choice.airline)
+    || pool.find(choice => choice.seller)
+    || pool[0];
 }
 
 function htmlEscape(value) {
@@ -79,13 +112,14 @@ function htmlEscape(value) {
 
 function submitPage(request) {
   const url = safe(request.url, 8000);
+  if (!url || isBlockedRedirect(url)) throw new Error('O fornecedor não disponibilizou um endereço direto para esta tarifa.');
   const postData = safe(request.post_data, 20000);
   if (!postData) return { redirect: url };
   const fields = [...new URLSearchParams(postData).entries()]
     .map(([name, value]) => `<input type="hidden" name="${htmlEscape(name)}" value="${htmlEscape(value)}">`)
     .join('');
   return {
-    html: `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Abrindo reserva</title></head><body style="font-family:Arial,sans-serif;background:#06111f;color:white;text-align:center;padding:40px"><p>Abrindo a reserva completa do voo...</p><form id="booking" method="post" action="${htmlEscape(url)}">${fields}<button type="submit">Continuar para reservar</button></form><script>document.getElementById('booking').submit();</script></body></html>`
+    html: `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Abrindo fornecedor</title></head><body style="font-family:Arial,sans-serif;background:#06111f;color:white;text-align:center;padding:40px"><p>Abrindo diretamente o fornecedor desta tarifa...</p><form id="booking" method="post" action="${htmlEscape(url)}">${fields}<button type="submit">Continuar para reservar</button></form><script>document.getElementById('booking').submit();</script></body></html>`
   };
 }
 
@@ -94,10 +128,14 @@ module.exports = async function handler(req, res) {
   const apiKey = process.env.SERPAPI_API_KEY;
   if (!apiKey) return res.status(500).send('Pesquisa de voos ainda não configurada.');
 
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+
   try {
     let bookingToken = safe(req.query.booking_token);
     const departureToken = safe(req.query.departure_token);
     const requestedAirline = safe(req.query.airline, 120);
+    const targetPrice = safe(req.query.price, 40);
 
     if (!bookingToken && departureToken) {
       const params = new URLSearchParams({
@@ -118,13 +156,12 @@ module.exports = async function handler(req, res) {
 
     if (!bookingToken) throw new Error('A companhia não forneceu um link direto para este itinerário.');
     const bookingData = await serpSearch(new URLSearchParams({ booking_token: bookingToken }), apiKey);
-    const choice = chooseBookingRequest(bookingData, requestedAirline);
+    const choice = chooseBookingRequest(bookingData, requestedAirline, targetPrice);
     if (!choice) throw new Error('Esta tarifa não possui link direto de companhia ou agência. Escolha outra oferta disponível.');
 
     const page = submitPage(choice.booking_request);
     if (page.redirect) return res.redirect(302, page.redirect);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
     return res.status(200).send(page.html);
   } catch (error) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
