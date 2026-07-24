@@ -53,18 +53,30 @@ module.exports = async function handler(req, res) {
 
   try {
     const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`, {
-      headers: { 'Accept': 'application/json' }
+      headers: { Accept: 'application/json' }
     });
     const data = await response.json();
     if (!response.ok || data.error) {
       return res.status(response.status || 502).json({ error: data.error || 'Erro retornado pela SerpApi.' });
     }
 
+    const exactSearchUrl =
+      data.search_metadata?.google_flights_url ||
+      data.search_metadata?.google_url ||
+      null;
+
+    const attachExactUrl = item => ({
+      ...item,
+      exact_search_url: item.link || item.booking_url || exactSearchUrl,
+      booking_options: Array.isArray(item.booking_options) ? item.booking_options : []
+    });
+
     return res.status(200).json({
-      best_flights: data.best_flights || [],
-      other_flights: data.other_flights || [],
+      best_flights: (data.best_flights || []).map(attachExactUrl),
+      other_flights: (data.other_flights || []).map(attachExactUrl),
       price_insights: data.price_insights || null,
-      airports: data.airports || null
+      airports: data.airports || null,
+      exact_search_url: exactSearchUrl
     });
   } catch (error) {
     console.error('SerpApi error:', error);
