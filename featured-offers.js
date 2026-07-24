@@ -117,12 +117,3 @@
   document.addEventListener('DOMContentLoaded', loadOffers, { once: true });
   if (document.readyState !== 'loading') loadOffers();
 })();
-
-(() => {
-  if (document.querySelector('script[data-monitoring-loader]')) return;
-  const script = document.createElement('script');
-  script.src = 'monitoring.js?v=3';
-  script.defer = true;
-  script.dataset.monitoringLoader = '1';
-  document.body.appendChild(script);
-})();
