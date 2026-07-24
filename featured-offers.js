@@ -1,4 +1,4 @@
-// Ofertas em destaque atualizadas com preços reais e abertura do cadastro interno.
+// Promoções reais em destaque com acesso direto ao local de reserva.
 (() => {
   const routes = [
     ['OAL', 'GRU'],
@@ -50,57 +50,24 @@
 
   function renderLoading() {
     const box = document.querySelector('#dealList');
-    if (box) box.innerHTML = '<div class="ai-note"><span>✦</span><p>Atualizando promoções e preços reais...</p></div>';
-  }
-
-  function openOfferRegistration(offer) {
-    const managementButton = document.querySelector('[data-view="travel-management"]');
-    if (!managementButton) {
-      window.toast?.('O cadastro de viagens ainda não foi carregado');
-      return;
-    }
-
-    managementButton.click();
-
-    requestAnimationFrame(() => {
-      const newTripButton = document.querySelector('#newManagedTrip');
-      newTripButton?.click();
-
-      const origin = document.querySelector('#managedOrigin');
-      const destination = document.querySelector('#managedDestination');
-      const departure = document.querySelector('#managedDeparture');
-      const returnInput = document.querySelector('#managedReturn');
-
-      if (origin) origin.value = offer.origin || '';
-      if (destination) destination.value = offer.destination || '';
-      if (departure) departure.value = departureDate;
-      if (returnInput) returnInput.value = returnDate;
-
-      document.querySelector('#managedTripFormWrap')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      window.toast?.('Promoção carregada no cadastro');
-    });
+    if (box) box.innerHTML = '<div class="ai-note"><span>✦</span><p>Buscando promoções reais disponíveis agora...</p></div>';
   }
 
   function renderOffers(offers) {
     const box = document.querySelector('#dealList');
     if (!box) return;
 
-    if (!offers.length) {
-      box.innerHTML = '<div class="ai-note"><span>⌕</span><p>Não encontrei promoções disponíveis agora. Toque em Nova busca para pesquisar outra rota.</p></div>';
-      return;
-    }
-
     box.innerHTML = offers.slice(0, 6).map((offer, index) => `
       <button type="button" class="deal featured-offer" data-offer-index="${index}">
         <div class="logo">✈</div>
         <div class="deal-copy">
           <b>${escapeHtml(offer.origin)} → ${escapeHtml(offer.destination)}</b>
-          <small>${escapeHtml(offer.airline)} • ida ${departureDate.split('-').reverse().join('/')} • volta ${returnDate.split('-').reverse().join('/')}</small>
-          <em>Toque para cadastrar e monitorar esta promoção</em>
+          <small>${escapeHtml(offer.airline || 'Google Voos')} • ida ${departureDate.split('-').reverse().join('/')} • volta ${returnDate.split('-').reverse().join('/')}</small>
+          <em>Toque para ver e reservar esta oferta</em>
         </div>
         <div class="deal-price">
-          <strong>R$ ${Number(offer.price).toLocaleString('pt-BR')}</strong>
-          <small>valor consultado agora</small>
+          <strong>${offer.price ? `R$ ${Number(offer.price).toLocaleString('pt-BR')}` : 'Ver oferta'}</strong>
+          <small>${offer.price ? 'preço consultado agora' : 'consultar preço disponível'}</small>
         </div>
         <span class="featured-arrow">›</span>
       </button>`).join('');
@@ -108,8 +75,8 @@
     box.querySelectorAll('[data-offer-index]').forEach(button => {
       button.addEventListener('click', () => {
         const offer = offers[Number(button.dataset.offerIndex)];
-        if (!offer) return;
-        openOfferRegistration(offer);
+        if (!offer?.url) return;
+        window.location.assign(offer.url);
       });
     });
   }
@@ -153,12 +120,31 @@
 
   async function loadOffers() {
     renderLoading();
-    const results = await Promise.allSettled(routes.map(route => fetchRoute(...route)));
-    const offers = results
-      .filter(result => result.status === 'fulfilled' && result.value)
-      .map(result => result.value)
-      .sort((a, b) => a.price - b.price);
-    renderOffers(offers);
+    const offers = [];
+
+    // Consultas em sequência evitam bloqueio ou limite da API por excesso de chamadas simultâneas.
+    for (const [origin, destination] of routes) {
+      try {
+        const offer = await fetchRoute(origin, destination);
+        if (offer) {
+          offers.push(offer);
+          renderOffers([...offers].sort((a, b) => Number(a.price) - Number(b.price)));
+        }
+      } catch (error) {
+        console.warn(`Promoção ${origin}-${destination} indisponível:`, error);
+      }
+    }
+
+    // Mesmo se a API estiver temporariamente indisponível, mantém atalhos reais para consulta e reserva.
+    if (!offers.length) {
+      renderOffers(routes.map(([origin, destination]) => ({
+        origin,
+        destination,
+        airline: 'Google Voos',
+        price: null,
+        url: fallbackUrl(origin, destination)
+      })));
+    }
   }
 
   document.addEventListener('DOMContentLoaded', loadOffers, { once: true });
