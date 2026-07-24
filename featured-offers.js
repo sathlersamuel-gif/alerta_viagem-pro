@@ -1,4 +1,4 @@
-// Ofertas em destaque atualizadas com preços reais e links clicáveis.
+// Ofertas em destaque atualizadas com preços reais e abertura da oferta exata.
 (() => {
   const routes = [
     ['OAL', 'GRU'],
@@ -19,9 +19,27 @@
   const departureDate = addDays(30);
   const returnDate = addDays(37);
 
-  function bookingUrl(origin, destination, departure = departureDate, returning = returnDate) {
-    const query = `Flights from ${origin} to ${destination} on ${departure} returning ${returning}`;
+  function fallbackUrl(origin, destination) {
+    const query = `Voos de ${origin} para ${destination}, ida ${departureDate}, volta ${returnDate}`;
     return `https://www.google.com/travel/flights?q=${encodeURIComponent(query)}&hl=pt-BR&curr=BRL`;
+  }
+
+  function validUrl(value) {
+    return typeof value === 'string' && /^https?:\/\//i.test(value) ? value : null;
+  }
+
+  function exactOfferUrl(flight, data, origin, destination) {
+    const bookingOptions = Array.isArray(flight?.booking_options) ? flight.booking_options : [];
+    const directBooking = bookingOptions
+      .map(option => validUrl(option?.link || option?.url || option?.booking_url))
+      .find(Boolean);
+
+    return directBooking ||
+      validUrl(flight?.booking_url) ||
+      validUrl(flight?.link) ||
+      validUrl(flight?.exact_search_url) ||
+      validUrl(data?.exact_search_url) ||
+      fallbackUrl(origin, destination);
   }
 
   function escapeHtml(value) {
@@ -50,11 +68,11 @@
         <div class="deal-copy">
           <b>${escapeHtml(offer.origin)} → ${escapeHtml(offer.destination)}</b>
           <small>${escapeHtml(offer.airline)} • ida ${departureDate.split('-').reverse().join('/')} • volta ${returnDate.split('-').reverse().join('/')}</small>
-          <em>Preço consultado agora • toque para reservar</em>
+          <em>Toque para abrir esta oferta com rota e datas preenchidas</em>
         </div>
         <div class="deal-price">
           <strong>R$ ${Number(offer.price).toLocaleString('pt-BR')}</strong>
-          <small>valor total exibido</small>
+          <small>valor consultado agora</small>
         </div>
         <span class="featured-arrow">›</span>
       </button>`).join('');
@@ -62,7 +80,8 @@
     box.querySelectorAll('[data-offer-index]').forEach(button => {
       button.addEventListener('click', () => {
         const offer = offers[Number(button.dataset.offerIndex)];
-        window.open(offer.url, '_blank', 'noopener,noreferrer');
+        if (!offer?.url) return;
+        window.location.href = offer.url;
       });
     });
   }
@@ -100,7 +119,7 @@
       destination,
       airline: firstLeg?.airline || 'Comparador de voos',
       price: Number(cheapest.price),
-      url: bookingUrl(origin, destination)
+      url: exactOfferUrl(cheapest, data, origin, destination)
     };
   }
 
