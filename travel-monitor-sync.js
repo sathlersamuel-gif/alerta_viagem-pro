@@ -15,10 +15,7 @@
     return value;
   }
 
-  function trips() {
-    try { return JSON.parse(localStorage.getItem(TRIPS_KEY) || '[]'); }
-    catch { return []; }
-  }
+  function trips() { try { return JSON.parse(localStorage.getItem(TRIPS_KEY) || '[]'); } catch { return []; } }
 
   function setStatus(text, state = 'working') {
     const view = document.querySelector('#view-travel-management .panel');
@@ -28,8 +25,7 @@
       box = document.createElement('div');
       box.id = 'monitorOnlineStatus';
       box.style.cssText = 'margin:12px 0;padding:12px 14px;border-radius:14px;font-size:13px;border:1px solid rgba(115,196,255,.22);background:rgba(255,255,255,.035)';
-      const note = view.querySelector('.info-note');
-      note?.insertAdjacentElement('afterend', box);
+      view.querySelector('.info-note')?.insertAdjacentElement('afterend', box);
     }
     const icon = state === 'ok' ? '●' : state === 'error' ? '⚠' : '◷';
     box.textContent = `${icon} ${text}`;
@@ -42,46 +38,31 @@
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Falha na conexão');
       if (Array.isArray(data.trips) && data.trips.length) {
-        const local = JSON.stringify(trips());
-        const remote = JSON.stringify(data.trips);
-        if (local !== remote) {
-          localStorage.setItem(TRIPS_KEY, remote);
-          location.reload();
-          return;
-        }
+        const local = JSON.stringify(trips()), remote = JSON.stringify(data.trips);
+        if (local !== remote) { localStorage.setItem(TRIPS_KEY, remote); location.reload(); return; }
       }
       lastPayload = JSON.stringify(trips());
       setStatus('IA online: viagens sincronizadas e aguardando a próxima consulta.', 'ok');
       decorate();
-    } catch (error) {
-      setStatus(error.message || 'Monitoramento online indisponível.', 'error');
-    }
+    } catch (error) { setStatus(error.message || 'Monitoramento online indisponível.', 'error'); }
   }
 
   async function push(force = false) {
     if (syncing) return;
-    const currentTrips = trips();
-    const payload = JSON.stringify(currentTrips);
+    const currentTrips = trips(), payload = JSON.stringify(currentTrips);
     if (!force && payload === lastPayload) return;
     syncing = true;
     try {
       setStatus('Salvando viagens no monitoramento online...');
-      const response = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId: clientId(), trips: currentTrips })
-      });
+      const response = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId: clientId(), trips: currentTrips }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Falha ao salvar online');
       localStorage.setItem(TRIPS_KEY, JSON.stringify(data.trips || currentTrips));
       lastPayload = JSON.stringify(data.trips || currentTrips);
       setStatus('IA online: monitoramento automático ativado.', 'ok');
       decorate();
-    } catch (error) {
-      setStatus(error.message || 'Não foi possível ativar o monitoramento online.', 'error');
-    } finally {
-      syncing = false;
-    }
+    } catch (error) { setStatus(error.message || 'Não foi possível ativar o monitoramento online.', 'error'); }
+    finally { syncing = false; }
   }
 
   function decorate() {
@@ -101,39 +82,9 @@
     });
   }
 
-  function enforceIataFields() {
-    const fields = [
-      ['managedOrigin', 'Código IATA da origem (ex.: CGB)'],
-      ['managedDestination', 'Código IATA do destino (ex.: GRU)']
-    ];
-    fields.forEach(([id, placeholder]) => {
-      const input = document.getElementById(id);
-      if (!input) return;
-      input.placeholder = placeholder;
-      input.maxLength = 3;
-      input.pattern = '[A-Za-z]{3}';
-      input.title = 'Digite o código IATA de três letras do aeroporto.';
-      input.addEventListener('input', () => { input.value = input.value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 3); });
-    });
-  }
-
-  const observer = new MutationObserver(() => {
-    enforceIataFields();
-    decorate();
-  });
+  const observer = new MutationObserver(decorate);
   observer.observe(document.documentElement, { childList: true, subtree: true });
-
-  document.addEventListener('submit', event => {
-    if (event.target?.id === 'managedTripForm') setTimeout(() => push(true), 100);
-  });
-  document.addEventListener('click', event => {
-    if (event.target?.matches('[data-toggle], [data-delete]')) setTimeout(() => push(true), 100);
-  });
-
-  window.addEventListener('load', () => {
-    enforceIataFields();
-    pull();
-    setInterval(() => push(false), 3000);
-    setInterval(pull, 5 * 60 * 1000);
-  });
+  document.addEventListener('submit', event => { if (event.target?.id === 'managedTripForm') setTimeout(() => push(true), 100); });
+  document.addEventListener('click', event => { if (event.target?.matches('[data-toggle], [data-delete]')) setTimeout(() => push(true), 100); });
+  window.addEventListener('load', () => { pull(); setInterval(() => push(false), 3000); setInterval(pull, 5 * 60 * 1000); });
 })();
