@@ -5,6 +5,7 @@
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
   const norm = (v='') => String(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const popularDestinations = ['GRU','GIG','BSB','REC','MCZ','FOR','SSA','CNF','CWB','FLN'];
 
   function resolveAirport(value) {
     const raw = String(value || '').trim();
@@ -39,6 +40,41 @@
     $('#resultCards').innerHTML = cards;
     panel.classList.remove('hidden');
     panel.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
+  async function searchAnyDestination(search) {
+    const departureId = extractIata(search.origin);
+    if (!departureId) throw new Error('Não consegui identificar o aeroporto de origem.');
+
+    const destinations = popularDestinations.filter(code => code !== departureId).slice(0, 6);
+    const requests = destinations.map(async (arrivalId) => {
+      const data = await postJson('/api/flights', {
+        departure_id: departureId,
+        arrival_id: arrivalId,
+        outbound_date: search.departure,
+        return_date: search.return || undefined,
+        adults: search.adults,
+        children: search.children,
+        deep_search: false
+      });
+      const options = [...(data.best_flights || []), ...(data.other_flights || [])];
+      const cheapest = options
+        .filter(item => Number(item.price) > 0)
+        .sort((a,b) => Number(a.price) - Number(b.price))[0];
+      return cheapest ? mapFlightOption(cheapest, 0) : null;
+    });
+
+    const settled = await Promise.allSettled(requests);
+    const results = settled
+      .filter(item => item.status === 'fulfilled' && item.value)
+      .map(item => item.value)
+      .sort((a,b) => a.cash - b.cash);
+
+    if (!results.length) {
+      const failed = settled.find(item => item.status === 'rejected');
+      throw new Error(failed?.reason?.message || 'Nenhum destino com preço disponível foi encontrado para essa data.');
+    }
+    return results;
   }
 
   function cardHtml(r, search) {
