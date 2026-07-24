@@ -153,3 +153,12 @@
   window.addEventListener('load', () => setTimeout(loadRealOffers, 80));
   document.addEventListener('DOMContentLoaded', () => setTimeout(loadRealOffers, 120));
 })();
+
+(() => {
+  if (document.querySelector('script[data-monitoring-loader]')) return;
+  const script = document.createElement('script');
+  script.src = 'monitoring.js?v=2';
+  script.defer = true;
+  script.dataset.monitoringLoader = '1';
+  document.body.appendChild(script);
+})();
