@@ -27,18 +27,12 @@
         usableFlights.slice(0, 3).forEach((flight, fi) => usableHotels.slice(0, 3).forEach((hotel, hi) => {
           const total = Number(flight.cash || 0) + Number(hotel.cash || 0);
           list.push({
-            kind: 'package',
-            type: 'COMPARAÇÃO VOO + HOTEL',
-            name: `${flight.name} + ${hotel.name}`,
-            route: flight.route,
-            price: money(total),
-            sub: `Voo ${money(flight.cash)} + hotel ${money(hotel.cash)}`,
+            kind: 'package', type: 'COMPARAÇÃO VOO + HOTEL',
+            name: `${flight.name} + ${hotel.name}`, route: flight.route,
+            price: money(total), sub: `Voo ${money(flight.cash)} + hotel ${money(hotel.cash)}`,
             score: Math.max(70, 97 - fi * 3 - hi * 2),
             meta: [...(flight.meta || []).slice(0, 2), ...(hotel.meta || []).slice(0, 2), 'Links individuais das fontes'],
-            best: false,
-            cash: total,
-            flight,
-            hotel
+            best: false, cash: total, flight, hotel
           });
         }));
         return list.sort((a, b) => a.cash - b.cash).slice(0, 8);
@@ -57,23 +51,19 @@
       outbound_date: search?.departure || '',
       adults: String(search?.adults || 1),
       children: String(search?.children || 0),
-      airline: String(result.name || '')
+      airline: String(result.name || ''),
+      price: String(result.cash || '')
     });
     if (search?.return) params.set('return_date', search.return);
     if (result.bookingToken) params.set('booking_token', result.bookingToken);
     if (result.departureToken) params.set('departure_token', result.departureToken);
+    params.set('_v', '3');
     return `/api/flight-booking?${params.toString()}`;
   }
 
   function readState() {
-    try {
-      return {
-        results: Array.isArray(currentResults) ? currentResults : [],
-        search: currentSearch || null
-      };
-    } catch {
-      return { results: [], search: null };
-    }
+    try { return { results: Array.isArray(currentResults) ? currentResults : [], search: currentSearch || null }; }
+    catch { return { results: [], search: null }; }
   }
 
   function button(label, className, url) {
@@ -95,7 +85,6 @@
   function applyExactLinks() {
     const { results, search } = readState();
     const cards = [...document.querySelectorAll('#resultCards .result-card')];
-
     cards.forEach((card, index) => {
       const result = results[index];
       const oldAction = card.querySelector('.result-action');
@@ -114,7 +103,7 @@
         const url = buildBookingUrl(result, search);
         if (!url) return unavailable(oldAction);
         oldAction.dataset.url = url;
-        oldAction.textContent = `Abrir esta tarifa de ${result.name || 'voo'}`;
+        oldAction.textContent = `Abrir tarifa de ${result.name || 'voo'} no vendedor`;
         oldAction.onclick = () => window.open(url, '_blank', 'noopener,noreferrer');
         return;
       }
@@ -141,8 +130,7 @@
   }
 
   if (resultsBox) {
-    new MutationObserver(() => setTimeout(applyExactLinks, 0))
-      .observe(resultsBox, { childList: true, subtree: true });
+    new MutationObserver(() => setTimeout(applyExactLinks, 0)).observe(resultsBox, { childList: true, subtree: true });
     setTimeout(applyExactLinks, 0);
   }
 })();
