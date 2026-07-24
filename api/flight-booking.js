@@ -2,6 +2,14 @@ function safe(value, max = 5000) {
   return String(value || '').slice(0, max);
 }
 
+function normalize(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
 async function serpSearch(params, apiKey) {
   params.set('engine', 'google_flights');
   params.set('api_key', apiKey);
@@ -26,10 +34,20 @@ function bookingParts(option) {
   return [option?.together, option?.departing, option?.returning].filter(Boolean);
 }
 
-function chooseBookingRequest(data) {
+function airlineMatches(choice, requestedAirline) {
+  if (!requestedAirline) return true;
+  const wanted = normalize(requestedAirline);
+  const airline = normalize(choice?.airline);
+  const seller = normalize(choice?.seller);
+  const url = normalize(choice?.booking_request?.url);
+  return airline.includes(wanted) || wanted.includes(airline) || seller.includes(wanted) || wanted.includes(seller) || url.includes(wanted);
+}
+
+function chooseBookingRequest(data, requestedAirline) {
   const choices = (data.booking_options || []).flatMap(option => bookingParts(option));
   const valid = choices.filter(choice => choice?.booking_request?.url);
-  return valid.find(choice => choice.airline) || valid[0] || null;
+  if (!requestedAirline) return valid.find(choice => choice.airline) || valid[0] || null;
+  return valid.find(choice => airlineMatches(choice, requestedAirline)) || null;
 }
 
 function htmlEscape(value) {
@@ -58,6 +76,7 @@ module.exports = async function handler(req, res) {
   try {
     let bookingToken = safe(req.query.booking_token);
     const departureToken = safe(req.query.departure_token);
+    const requestedAirline = safe(req.query.airline, 120);
 
     if (!bookingToken && departureToken) {
       const params = new URLSearchParams({
@@ -78,8 +97,8 @@ module.exports = async function handler(req, res) {
 
     if (!bookingToken) throw new Error('A companhia não forneceu um link direto para este itinerário.');
     const bookingData = await serpSearch(new URLSearchParams({ booking_token: bookingToken }), apiKey);
-    const choice = chooseBookingRequest(bookingData);
-    if (!choice) throw new Error('A companhia não disponibilizou a abertura automática desta tarifa.');
+    const choice = chooseBookingRequest(bookingData, requestedAirline);
+    if (!choice) throw new Error(`Não encontrei uma opção de reserva direta na ${requestedAirline || 'companhia selecionada'} para esta tarifa.`);
 
     const page = submitPage(choice.booking_request);
     if (page.redirect) return res.redirect(302, page.redirect);
