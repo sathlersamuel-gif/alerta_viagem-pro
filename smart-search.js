@@ -145,29 +145,38 @@
 
       let results = [];
       let explanation = '';
-      if (search.any) {
-        results = await searchAnyDestination(search);
-        explanation = `Analisei vários destinos saindo de ${originAirport[1]} e ordenei pelos menores preços.`;
-      } else if (search.tripType === 'flight') {
-        results = await searchRealFlights(search);
-        explanation = `Encontrei e comparei voos de ${originAirport[1]} para ${destinationAirport[1]}.`;
-      } else if (search.tripType === 'hotel') {
-        results = await searchRealHotels(search);
-        explanation = `Comparei hotéis em ${destinationAirport[1]} para todos os passageiros e todas as noites.`;
+
+      if (search.preference === 'points') {
+        if (search.any) throw new Error('A busca “qualquer destino” ainda não possui consulta oficial em pontos. Escolha um destino específico.');
+        if (search.tripType === 'hotel') throw new Error('A busca somente em pontos está disponível para passagens aéreas. Para hotel, escolha dinheiro ou comparação completa.');
+        results = await officialAzulPoints(search);
+        if (!results.length) throw new Error('Não encontrei oferta pública em pontos para essa rota e data. Nenhum preço em reais foi mostrado porque você selecionou somente pontos.');
+        explanation = `Encontrei oferta oficial da Azul Fidelidade em pontos para ${originAirport[1]} → ${destinationAirport[1]}.`;
       } else {
-        const [flights, hotels] = await Promise.all([searchRealFlights(search), searchRealHotels(search)]);
-        results = buildPackages(flights, hotels);
-        explanation = `Cruzei voos e hotéis e montei os pacotes completos de menor valor para todos os passageiros.`;
+        if (search.any) {
+          results = await searchAnyDestination(search);
+          explanation = `Analisei vários destinos saindo de ${originAirport[1]} e ordenei pelos menores preços.`;
+        } else if (search.tripType === 'flight') {
+          results = await searchRealFlights(search);
+          explanation = `Encontrei e comparei voos de ${originAirport[1]} para ${destinationAirport[1]}.`;
+        } else if (search.tripType === 'hotel') {
+          results = await searchRealHotels(search);
+          explanation = `Comparei hotéis em ${destinationAirport[1]} para todos os passageiros e todas as noites.`;
+        } else {
+          const [flights, hotels] = await Promise.all([searchRealFlights(search), searchRealHotels(search)]);
+          results = buildPackages(flights, hotels);
+          explanation = `Cruzei voos e hotéis e montei os pacotes completos de menor valor para todos os passageiros.`;
+        }
+
+        if (['mixed','best'].includes(search.preference) && !search.any && search.tripType !== 'hotel') {
+          const pointResults = await officialAzulPoints(search);
+          results = [...pointResults, ...results];
+          if (!pointResults.length) explanation += ' Não havia oferta pública da Azul em pontos para essa rota e data; por isso os preços em reais ficaram como referência.';
+          else explanation += ' Também encontrei oferta oficial publicada pela Azul em pontos.';
+        }
       }
 
-      if (['points','mixed','best'].includes(search.preference) && !search.any && search.tripType !== 'hotel') {
-        const pointResults = await officialAzulPoints(search);
-        results = [...pointResults, ...results];
-        if (!pointResults.length) explanation += ' Não havia oferta pública da Azul em pontos para essa rota e data; por isso mostrei os preços reais em dinheiro como referência.';
-        else explanation += ' Também encontrei oferta oficial publicada pela Azul em pontos.';
-      }
-
-      if (!results.length) throw new Error('A pesquisa terminou, mas nenhuma opção com preço disponível foi encontrada para essas datas.');
+      if (!results.length) throw new Error('A pesquisa terminou, mas nenhuma opção disponível foi encontrada para essas datas.');
       const cashResults = results.filter(r => Number(r.cash) > 0).sort((a,b) => a.cash-b.cash);
       results.forEach(r => { if (r.kind !== 'points') r.best = false; });
       if (!results.some(r => r.best) && cashResults[0]) cashResults[0].best = true;
@@ -178,7 +187,7 @@
       $$('.result-action').forEach(btn => btn.onclick = () => window.open(btn.dataset.url, '_blank', 'noopener,noreferrer'));
     } catch (error) {
       console.error(error);
-      showPanel(`<b>Não consegui concluir a consulta.</b><br>${error.message || 'O serviço de pesquisa não respondeu agora.'}<br><br>Confira apenas a internet e toque novamente. Os dados preenchidos foram mantidos.`);
+      showPanel(`<b>Não consegui concluir a consulta.</b><br>${error.message || 'O serviço de pesquisa não respondeu agora.'}<br><br>Os dados preenchidos foram mantidos.`);
     } finally {
       if (submit) { submit.disabled = false; submit.innerHTML = original; }
     }
