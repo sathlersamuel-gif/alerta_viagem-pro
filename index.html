@@ -36,15 +36,15 @@
 
       <section class="view active" id="view-dashboard">
         <div class="hero-panel glass">
-          <div class="hero-copy"><span class="pill glow">IA DE OPORTUNIDADES</span><h2>Viaje melhor usando seus pontos e seu dinheiro.</h2><p>Compare passagens, hotéis e pacotes completos. O sistema destaca onde seus pontos rendem mais.</p><button class="primary" data-go="search">Começar uma busca <span>→</span></button></div>
+          <div class="hero-copy"><span class="pill glow">IA DE OPORTUNIDADES</span><h2>Viaje melhor usando seus pontos e seu dinheiro.</h2><p>Compare passagens, hotéis e pacotes completos. Escolha exatamente quais programas de fidelidade devem ser monitorados.</p><button class="primary" data-go="search">Começar uma busca <span>→</span></button></div>
           <div class="orb"><div class="orb-core">✦</div><span class="orbit o1"></span><span class="orbit o2"></span><span class="orbit o3"></span></div>
         </div>
 
         <div class="stats-grid">
           <article class="stat-card glass"><span class="stat-icon">⌕</span><div><small>Buscas salvas</small><strong id="statSearches">0</strong><em>monitoramento contínuo</em></div></article>
           <article class="stat-card glass"><span class="stat-icon">◉</span><div><small>Alertas ativos</small><strong id="statAlerts">6</strong><em>WhatsApp e e-mail</em></div></article>
-          <article class="stat-card glass"><span class="stat-icon">✦</span><div><small>Melhor economia</small><strong id="statSaving">R$ 0</strong><em>estimativa inteligente</em></div></article>
-          <article class="stat-card glass"><span class="stat-icon">◇</span><div><small>Pontos cadastrados</small><strong id="statPoints">160 mil</strong><em>todos os programas</em></div></article>
+          <article class="stat-card glass"><span class="stat-icon">✦</span><div><small>Melhor economia</small><strong id="statSaving">R$ 0</strong><em>preços reais encontrados</em></div></article>
+          <article class="stat-card glass"><span class="stat-icon">◇</span><div><small>Pontos cadastrados</small><strong id="statPoints">160 mil</strong><em>programas selecionados</em></div></article>
         </div>
 
         <div class="two-col">
@@ -66,13 +66,14 @@
               <div class="field"><label>Adultos</label><div class="counter"><button type="button" data-counter="adults" data-delta="-1">−</button><input id="adults" value="1" readonly><button type="button" data-counter="adults" data-delta="1">+</button></div></div>
               <div class="field"><label>Crianças</label><div class="counter"><button type="button" data-counter="children" data-delta="-1">−</button><input id="children" value="0" readonly><button type="button" data-counter="children" data-delta="1">+</button></div></div>
               <div id="childAges" class="child-ages span-4 hidden"></div>
-              <div class="field span-2"><label>Como prefere pagar?</label><select id="preference"><option value="best">Melhor custo-benefício</option><option value="points">Comparar em pontos (estimativa)</option><option value="cash">Priorizar dinheiro</option><option value="mixed">Pontos + dinheiro (estimativa)</option></select></div>
+              <div class="field span-2"><label>Como prefere pagar?</label><select id="preference"><option value="cash">Dinheiro</option><option value="points">Pontos reais do programa</option><option value="mixed">Pontos + dinheiro reais</option><option value="best">Comparar todas as opções reais</option></select></div>
               <div class="field span-2"><label>Tipo de busca</label><select id="tripType"><option value="complete">Voo + hotel (pacote completo)</option><option value="flight">Somente passagem aérea</option><option value="hotel">Somente hotel</option></select></div>
+              <div class="field span-4 hidden" id="loyaltyProgramField"><label>Programa de fidelidade a monitorar</label><select id="loyaltyProgram"><option value="azul" selected>Somente Azul Fidelidade</option><option value="latam">Somente LATAM Pass</option><option value="smiles">Somente Smiles</option><option value="all">Todos os programas selecionados</option></select><small id="loyaltyProgramHelp">Quando Azul estiver selecionada, resultados de LATAM e Smiles não serão mostrados.</small></div>
             </div>
-            <div class="search-footer"><div><b>Comparação inteligente ativada</b><small>Preços reais em dinheiro e equivalência estimada em pontos.</small></div><button class="primary" type="submit"><span>✦</span> Analisar melhores opções</button></div>
+            <div class="search-footer"><div><b>Resultados reais, sem estimativas</b><small>O sistema não exibirá quantidade de pontos sem confirmação do programa selecionado.</small></div><button class="primary" type="submit"><span>✦</span> Analisar melhores opções</button></div>
           </form>
 
-          <aside class="panel glass ai-side"><span class="pill glow">ASSISTENTE IA</span><h3>O que será analisado?</h3><ul><li><i>✓</i>Preço total para todos</li><li><i>✓</i>Valor estimado de cada ponto</li><li><i>✓</i>Taxas, escalas e bagagem</li><li><i>✓</i>Voo, hotel e pacote</li><li><i>✓</i>Combinações mais vantajosas</li></ul><div class="ai-note"><span>✦</span><p>A recomendação final explica por que uma opção é melhor.</p></div></aside>
+          <aside class="panel glass ai-side"><span class="pill glow">ASSISTENTE IA</span><h3>O que será analisado?</h3><ul><li><i>✓</i>Preço total para todos</li><li><i>✓</i>Pontos reais do programa escolhido</li><li><i>✓</i>Taxas, escalas e bagagem</li><li><i>✓</i>Voo, hotel e pacote</li><li><i>✓</i>Somente companhias selecionadas</li></ul><div class="ai-note"><span>✦</span><p>Nenhum valor em pontos será inventado ou calculado por estimativa.</p></div></aside>
         </div>
         <section id="resultsPanel" class="panel glass results-panel hidden"><div class="panel-head"><div><span class="eyebrow">ANÁLISE CONCLUÍDA</span><h3>Melhores opções encontradas</h3></div><div class="results-actions"><button id="saveSearch" class="secondary">Salvar busca</button><button id="exportResults" class="secondary">Exportar resumo</button></div></div><div id="aiRecommendation" class="recommendation"></div><div id="resultCards" class="result-grid"></div></section>
       </section>
@@ -88,7 +89,7 @@
   <dialog id="walletDialog"><form method="dialog" class="modal glass"><div class="panel-head"><div><span class="eyebrow">CARTEIRA</span><h3>Saldo de pontos</h3></div><button class="icon-btn">×</button></div><div id="walletInputs" class="wallet-inputs"></div><button id="saveWallet" class="primary" value="default">Salvar carteira</button></form></dialog>
   <div id="toast" class="toast"></div>
   <script src="app.js"></script>
-  <script src="fixes.js?v=2"></script>
+  <script src="fixes.js?v=3"></script>
   <script src="ui-fixes.js?v=1"></script>
 </body>
 </html>
