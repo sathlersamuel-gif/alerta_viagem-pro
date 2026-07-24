@@ -6,8 +6,8 @@
     const panel = document.querySelector('#resultsPanel');
     const recommendation = document.querySelector('#aiRecommendation');
     const cards = document.querySelector('#resultCards');
-    if (recommendation) recommendation.innerHTML = `<b>Não foi possível concluir a busca:</b> ${message}`;
-    if (cards) cards.innerHTML = '<div class="ai-note"><span>!</span><p>O sistema não exibirá valores estimados como se fossem pontos reais.</p></div>';
+    if (recommendation) recommendation.innerHTML = `<b>Revise os dados da busca:</b> ${message}`;
+    if (cards) cards.innerHTML = '';
     if (panel) {
       panel.classList.remove('hidden');
       panel.scrollIntoView({behavior:'smooth', block:'start'});
@@ -104,16 +104,12 @@
     if (!currentSearch.any && !currentSearch.destination) return showSearchError('Informe o destino.');
 
     const usesPoints = ['points','mixed','best'].includes(currentSearch.preference);
-    if (usesPoints) {
-      const programNames = {azul:'Azul Fidelidade', latam:'LATAM Pass', smiles:'Smiles', all:'todos os programas selecionados'};
-      const selectedName = programNames[currentSearch.loyaltyProgram] || 'programa selecionado';
-      return showSearchError(`A busca de pontos reais do ${selectedName} ainda precisa da integração de emissões desse programa. Nenhuma estimativa será mostrada. Para pesquisar agora, selecione “Dinheiro”.`);
-    }
+    currentSearch.monitorPoints = usesPoints;
 
     try {
       if (submit) {
         submit.disabled = true;
-        submit.textContent = currentSearch.any ? 'Procurando destinos baratos...' : 'Buscando preços reais...';
+        submit.textContent = currentSearch.any ? 'Procurando destinos baratos...' : 'Buscando opções reais...';
       }
 
       let recommendation = '';
@@ -136,7 +132,14 @@
 
       currentResults = markBest(currentResults);
       renderResults();
-      document.querySelector('#aiRecommendation').innerHTML = `<b>✦ Resultado real:</b> ${recommendation}`;
+
+      const programNames = {azul:'Azul Fidelidade', latam:'LATAM Pass', smiles:'Smiles', all:'todos os programas selecionados'};
+      const selectedName = programNames[currentSearch.loyaltyProgram] || 'programa selecionado';
+      const monitoringNote = usesPoints
+        ? ` <b>Monitoramento de pontos ativado:</b> esta rota ficou preparada para ${selectedName}. Enquanto a integração de emissões reais não estiver conectada, os cartões abaixo mostram apenas preços reais em dinheiro como referência — sem estimar pontos.`
+        : '';
+
+      document.querySelector('#aiRecommendation').innerHTML = `<b>✦ Busca concluída:</b> ${recommendation}${monitoringNote}`;
       document.querySelector('#resultsPanel').classList.remove('hidden');
       document.querySelector('#resultsPanel').scrollIntoView({behavior:'smooth', block:'start'});
     } catch (error) {
