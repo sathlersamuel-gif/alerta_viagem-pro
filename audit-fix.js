@@ -70,30 +70,28 @@
 
   const originalRenderResults = window.renderResults;
   window.renderResults = function auditedRenderResults() {
-    if (!Array.isArray(window.currentResults)) window.currentResults = [];
-    const search = window.currentSearch || {};
-    const program = search.loyaltyProgram || 'all';
-
-    if (search.preference === 'cash' && program !== 'all') {
-      const matcher = airlineMatches[program] || airlineMatches.all;
-      const filtered = window.currentResults.filter((r) => r.kind !== 'flight' || matcher(r.name));
-      if (filtered.length) window.currentResults = filtered;
-    }
-
     if (typeof originalRenderResults === 'function') originalRenderResults();
+    const search = {
+      origin: $('#origin')?.value || '', destination: $('#destination')?.value || '',
+      departure: $('#departure')?.value || '', return: $('#return')?.value || ''
+    };
+    const selectedProgram = $('#loyaltyProgram')?.value || 'all';
+    const preference = $('#preference')?.value || 'cash';
 
-    $$('.result-card').forEach((card, index) => {
-      const result = window.currentResults[index];
-      if (!result) return;
+    $$('.result-card').forEach((card) => {
+      const title = card.querySelector('h4')?.textContent || '';
+      const tag = card.querySelector('.tag')?.textContent || '';
+      if (preference === 'cash' && selectedProgram !== 'all' && /PASSAGEM/i.test(tag)) {
+        const matcher = airlineMatches[selectedProgram] || airlineMatches.all;
+        if (!matcher(title)) { card.remove(); return; }
+      }
       card.classList.add('action-card');
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
-      const label = result.kind === 'hotel' ? 'Ver hotel' : result.kind === 'package' ? 'Ver opções' : 'Ver voo e reservar';
+      const isHotel = /HOTEL/i.test(tag);
+      const label = isHotel ? 'Abrir opções de hotel' : 'Ver voo e reservar';
       if (!card.querySelector('.result-action')) card.insertAdjacentHTML('beforeend', `<button type="button" class="primary result-action">${label}</button>`);
-      const activate = () => {
-        if (result.kind === 'hotel' && result.link) return openUrl(result.link);
-        openUrl(googleFlightsUrl(search));
-      };
+      const activate = () => openUrl(isHotel ? `https://www.google.com/travel/hotels?q=${encodeURIComponent('Hotéis em ' + ($('#destination')?.value || ''))}&hl=pt-BR&curr=BRL` : googleFlightsUrl(search));
       card.addEventListener('click', (e) => { if (!e.target.closest('button')) activate(); });
       card.querySelector('.result-action')?.addEventListener('click', (e) => { e.stopPropagation(); activate(); });
       card.addEventListener('keydown', (e) => { if (e.key === 'Enter') activate(); });
@@ -111,7 +109,7 @@
         let wallet = {};
         try { wallet = JSON.parse(localStorage.getItem('avpro_state') || '{}').wallet || {}; } catch {}
         const selectedProgram = $('#loyaltyProgram')?.value || 'azul';
-        window.currentSearch = {
+        const pointSearch = {
           origin: $('#origin')?.value || '', destination: $('#destination')?.value || '',
           any: Boolean($('#anyDestination')?.checked), departure: $('#departure')?.value || '', return: $('#return')?.value || '',
           adults: Number($('#adults')?.value || 1), children: Number($('#children')?.value || 0), ages,
@@ -120,16 +118,31 @@
           pointsBalance: Number(wallet[programNames[selectedProgram]] || 0),
           createdAt: new Date().toISOString(), monitorPoints: true
         };
-        if (!window.currentSearch.origin) return window.toast?.('Informe a origem');
-        if (!window.currentSearch.departure) return window.toast?.('Informe a data de ida');
-        if (!window.currentSearch.any && !window.currentSearch.destination) return window.toast?.('Informe o destino');
-        window.currentResults = [];
-        renderPointsMonitoring(window.currentSearch);
+        if (!pointSearch.origin) return window.toast?.('Informe a origem');
+        if (!pointSearch.departure) return window.toast?.('Informe a data de ida');
+        if (!pointSearch.any && !pointSearch.destination) return window.toast?.('Informe o destino');
+        window.__avproPointSearch = pointSearch;
+        renderPointsMonitoring(pointSearch);
         return;
       }
       return previousSubmit?.call(this, event);
     };
   }
+
+  const saveSearchButton = $('#saveSearch');
+  saveSearchButton?.addEventListener('click', (event) => {
+    const pointSearch = window.__avproPointSearch;
+    if (!pointSearch || !['points','mixed'].includes(pointSearch.preference)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    try {
+      const savedState = JSON.parse(localStorage.getItem('avpro_state') || '{}');
+      savedState.saved = Array.isArray(savedState.saved) ? savedState.saved : [];
+      savedState.saved.unshift({ ...pointSearch, id: Date.now(), active: true });
+      localStorage.setItem('avpro_state', JSON.stringify(savedState));
+      window.toast?.('Busca em pontos salva e monitoramento ativado');
+    } catch { window.toast?.('Não foi possível salvar a busca'); }
+  }, true);
 
   const heroTitle = $('.hero-copy h2');
   const heroText = $('.hero-copy p');
