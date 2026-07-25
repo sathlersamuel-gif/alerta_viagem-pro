@@ -4,12 +4,20 @@
   }
 
   const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
+  const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 820;
+
+  if (isSafari || isMobile) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'mobile-performance.css?v=1';
+    document.head.appendChild(link);
+    document.documentElement.classList.add('mobile-performance');
+  }
+
   if (!isSafari) return;
 
-  // A limpeza completa de todos os caches a cada abertura deixava o Safari pesado
-  // e ainda provocava um segundo carregamento da página. Agora fazemos isso uma única vez.
   window.addEventListener('load', () => {
-    const marker = 'safariEstabilidadeV2';
+    const marker = 'safariEstabilidadeV3';
     if (localStorage.getItem(marker)) return;
     localStorage.setItem(marker, '1');
 
@@ -29,6 +37,6 @@
       } catch (error) {
         console.warn('Não foi possível limpar o cache antigo do Safari:', error);
       }
-    }, 1500);
+    }, 3000);
   }, { once: true });
 })();
