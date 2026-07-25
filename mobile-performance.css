@@ -2,6 +2,7 @@
   html { scroll-behavior: auto !important; }
   body { overflow-x: hidden; background: #06111f !important; }
 
+  /* Remove apenas os efeitos mais pesados no celular. */
   .aurora, .orb, .orbit { display: none !important; }
 
   .glass, .panel, .hero-panel, .stat-card, .result-card,
@@ -14,23 +15,22 @@
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.08s !important;
+    transition-duration: 0.05s !important;
   }
 
+  /* Safari apresentou falhas com contain e content-visibility.
+     Mantemos a renderização normal para não travar nem deixar campos em branco. */
   .view:not(.active) { display: none !important; }
   .view.active { display: block !important; }
 
-  .panel, .hero-panel, .stat-card, .result-card, .managed-trip-card {
-    contain: layout paint;
-  }
-
+  .panel, .hero-panel, .stat-card, .result-card, .managed-trip-card,
   #dealList, #walletList, #savedList, #managedTripList, #resultCards {
-    content-visibility: auto;
-    contain-intrinsic-size: 500px;
+    contain: none !important;
+    content-visibility: visible !important;
   }
 
-  .main { min-height: 100dvh; }
-  .topbar { position: sticky; top: 0; z-index: 40; }
+  .main { min-height: 100vh; }
+  .topbar { position: relative; z-index: 40; }
 }
 
 @media (prefers-reduced-motion: reduce) {
