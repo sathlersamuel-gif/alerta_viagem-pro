@@ -37,7 +37,6 @@ function bookingParts(option) {
 function airlineMatches(choice, requestedAirline) {
   if (!requestedAirline) return false;
   const wanted = normalize(requestedAirline);
-  if (!wanted) return false;
   const values = [choice?.airline, choice?.seller, choice?.booking_request?.url]
     .map(normalize)
     .filter(Boolean);
@@ -47,10 +46,7 @@ function airlineMatches(choice, requestedAirline) {
 function isBlockedRedirect(value) {
   try {
     const hostname = new URL(String(value || '')).hostname.toLowerCase().replace(/^www\./, '');
-    const blocked = [
-      'google.com', 'googleusercontent.com', 'googleadservices.com',
-      'googlesyndication.com', 'doubleclick.net', 'g.co', 'goo.gl'
-    ];
+    const blocked = ['google.com', 'googleusercontent.com', 'googleadservices.com', 'googlesyndication.com', 'doubleclick.net', 'g.co', 'goo.gl'];
     return blocked.some(domain => hostname === domain || hostname.endsWith(`.${domain}`));
   } catch {
     return true;
@@ -84,13 +80,9 @@ function directChoices(data) {
 function chooseBookingRequest(data, requestedAirline, targetPrice) {
   const choices = directChoices(data);
   if (!choices.length) return null;
-
-  const airlineChoices = requestedAirline
-    ? choices.filter(choice => airlineMatches(choice, requestedAirline))
-    : [];
+  const airlineChoices = requestedAirline ? choices.filter(choice => airlineMatches(choice, requestedAirline)) : [];
   const pool = airlineChoices.length ? airlineChoices : choices;
   const wantedPrice = priceNumber(targetPrice);
-
   if (wantedPrice > 0) {
     const priced = pool
       .map(choice => ({ choice, difference: Math.abs(priceNumber(choice.price) - wantedPrice) }))
@@ -98,10 +90,7 @@ function chooseBookingRequest(data, requestedAirline, targetPrice) {
       .sort((a, b) => a.difference - b.difference);
     if (priced.length) return priced[0].choice;
   }
-
-  return pool.find(choice => choice.airline)
-    || pool.find(choice => choice.seller)
-    || pool[0];
+  return pool.find(choice => choice.airline) || pool.find(choice => choice.seller) || pool[0];
 }
 
 function htmlEscape(value) {
@@ -123,6 +112,26 @@ function submitPage(request) {
   };
 }
 
+function baseSearchParams(query) {
+  const departureId = safe(query.departure_id, 3).toUpperCase();
+  const arrivalId = safe(query.arrival_id, 3).toUpperCase();
+  const outboundDate = safe(query.outbound_date, 10);
+  if (!/^[A-Z]{3}$/.test(departureId)) throw new Error('A origem do voo não foi identificada. Faça uma nova pesquisa.');
+  if (!/^[A-Z]{3}$/.test(arrivalId)) throw new Error('O destino do voo não foi identificado. Faça uma nova pesquisa.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(outboundDate)) throw new Error('A data de ida não foi identificada. Faça uma nova pesquisa.');
+
+  const params = new URLSearchParams({
+    departure_id: departureId,
+    arrival_id: arrivalId,
+    outbound_date: outboundDate,
+    adults: String(Math.min(9, Math.max(1, Number(query.adults) || 1))),
+    children: String(Math.min(8, Math.max(0, Number(query.children) || 0))),
+    type: query.return_date ? '1' : '2'
+  });
+  if (query.return_date) params.set('return_date', safe(query.return_date, 10));
+  return params;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).send('Método não permitido.');
   const apiKey = process.env.SERPAPI_API_KEY;
@@ -132,30 +141,26 @@ module.exports = async function handler(req, res) {
   res.setHeader('Referrer-Policy', 'no-referrer');
 
   try {
+    const params = baseSearchParams(req.query);
     let bookingToken = safe(req.query.booking_token);
     const departureToken = safe(req.query.departure_token);
     const requestedAirline = safe(req.query.airline, 120);
     const targetPrice = safe(req.query.price, 40);
 
     if (!bookingToken && departureToken) {
-      const params = new URLSearchParams({
-        departure_id: safe(req.query.departure_id, 3).toUpperCase(),
-        arrival_id: safe(req.query.arrival_id, 3).toUpperCase(),
-        outbound_date: safe(req.query.outbound_date, 10),
-        adults: String(Math.min(9, Math.max(1, Number(req.query.adults) || 1))),
-        children: String(Math.min(8, Math.max(0, Number(req.query.children) || 0))),
-        type: req.query.return_date ? '1' : '2',
-        departure_token: departureToken,
-        sort_by: '2',
-        deep_search: 'true'
-      });
-      if (req.query.return_date) params.set('return_date', safe(req.query.return_date, 10));
+      params.set('departure_token', departureToken);
+      params.set('sort_by', '2');
+      params.set('deep_search', 'true');
       const returnData = await serpSearch(params, apiKey);
       bookingToken = allFlights(returnData).find(item => item.booking_token)?.booking_token || '';
+      params.delete('departure_token');
+      params.delete('sort_by');
+      params.delete('deep_search');
     }
 
     if (!bookingToken) throw new Error('A companhia não forneceu um link direto para este itinerário.');
-    const bookingData = await serpSearch(new URLSearchParams({ booking_token: bookingToken }), apiKey);
+    params.set('booking_token', bookingToken);
+    const bookingData = await serpSearch(params, apiKey);
     const choice = chooseBookingRequest(bookingData, requestedAirline, targetPrice);
     if (!choice) throw new Error('Esta tarifa não possui link direto de companhia ou agência. Escolha outra oferta disponível.');
 
