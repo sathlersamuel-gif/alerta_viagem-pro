@@ -1,5 +1,4 @@
 (() => {
-  // Compatibilidade para versões do Safari que não possuem structuredClone.
   if (typeof window.structuredClone !== 'function') {
     window.structuredClone = value => JSON.parse(JSON.stringify(value));
   }
@@ -7,29 +6,29 @@
   const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
   if (!isSafari) return;
 
-  // O Safari estava mantendo versões diferentes dos arquivos do aplicativo.
-  // No Safari usamos sempre a versão online, sem Service Worker.
-  window.addEventListener('load', async () => {
-    try {
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.map(registration => registration.unregister()));
-      }
+  // A limpeza completa de todos os caches a cada abertura deixava o Safari pesado
+  // e ainda provocava um segundo carregamento da página. Agora fazemos isso uma única vez.
+  window.addEventListener('load', () => {
+    const marker = 'safariEstabilidadeV2';
+    if (localStorage.getItem(marker)) return;
+    localStorage.setItem(marker, '1');
 
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(key => caches.delete(key)));
-      }
+    setTimeout(async () => {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(registration => registration.unregister()));
+        }
 
-      const marker = 'safariAtualizado';
-      const url = new URL(window.location.href);
-      if (!sessionStorage.getItem(marker)) {
-        sessionStorage.setItem(marker, '1');
-        url.searchParams.set('_safari', Date.now().toString());
-        window.location.replace(url.toString());
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys
+            .filter(key => /alerta|viagem|travel|static|cache/i.test(key))
+            .map(key => caches.delete(key)));
+        }
+      } catch (error) {
+        console.warn('Não foi possível limpar o cache antigo do Safari:', error);
       }
-    } catch (error) {
-      console.warn('Falha ao limpar a versão antiga do Safari:', error);
-    }
+    }, 1500);
   }, { once: true });
 })();
