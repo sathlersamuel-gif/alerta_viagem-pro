@@ -1,116 +1,76 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#06111f" />
-  <meta name="description" content="Alerta Viagem PRO — busca inteligente de passagens, hotéis e pacotes em pontos ou dinheiro." />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="ui-fixes.css?v=1" />
-  <link rel="stylesheet" href="travelers.css?v=2" />
-  <link rel="stylesheet" href="points-balance.css?v=1" />
-  <link rel="stylesheet" href="featured-offers.css?v=2" />
-  <link rel="stylesheet" href="mobile-search.css?v=1" />
-  <link rel="stylesheet" href="trip-type-fix.css?v=1" />
-  <title>Alerta Viagem PRO</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071525">
+<title>Alerta Viagem PRO</title>
+<style>
+:root{--bg:#071525;--panel:#0d2238;--panel2:#102b46;--line:#234663;--text:#f4f8fb;--muted:#a9bfd1;--blue:#2588ff;--violet:#6558ff;--green:#31d69b;--danger:#ff667d}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}button{cursor:pointer}.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}.side{background:#081827;border-right:1px solid var(--line);padding:20px;position:sticky;top:0;height:100vh}.brand{font-size:20px;font-weight:900;margin-bottom:22px}.brand small{display:block;color:#56d7ff;font-size:11px;letter-spacing:.18em}.nav{display:grid;gap:8px}.nav button{border:0;border-radius:12px;padding:13px;text-align:left;background:transparent;color:var(--muted);font-weight:700}.nav button.active{background:#12304d;color:#fff}.main{padding:24px;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.menu{display:none}.view{display:none}.view.active{display:block}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:16px}.hero h1{font-size:clamp(30px,5vw,54px);line-height:1.05;margin:10px 0}.hero p,.muted{color:var(--muted)}.primary,.secondary,.danger{border:0;border-radius:12px;padding:13px 17px;font-weight:800}.primary{color:#fff;background:linear-gradient(135deg,var(--blue),var(--violet)}.secondary{color:#dff3ff;background:#173653;border:1px solid var(--line)}.danger{color:#fff;background:#7b2940}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat strong{display:block;font-size:28px}.stat span{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:grid;gap:7px}.field.full{grid-column:1/-1}.field label{font-size:13px;font-weight:800;color:#c4d6e4}.field input,.field select{width:100%;height:50px;border:1px solid var(--line);border-radius:12px;background:#071a2b;color:#fff;padding:0 13px}.counter{display:grid;grid-template-columns:48px 1fr 48px}.counter button{border:1px solid var(--line);background:#173653;color:#fff}.counter input{text-align:center;border-radius:0}.counter button:first-child{border-radius:12px 0 0 12px}.counter button:last-child{border-radius:0 12px 12px 0}.ages{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.result,.trip{background:#0a1c2e;border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:10px}.result h3,.trip h3{margin:0 0 8px}.price{font-size:23px;font-weight:900;margin:10px 0}.notice{padding:13px;border-radius:12px;background:#102f3d;border:1px solid #225267;color:#dff8ff;margin-top:12px}.error{background:#3b1b28;border-color:#6e3043}.hidden{display:none!important}.trip-actions{display:flex;gap:8px;margin-top:12px}.empty{padding:24px;text-align:center;color:var(--muted)}.toggle{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0a1c2e}.toggle input{width:22px;height:22px}.section-title{margin:0 0 15px}.footer-note{font-size:12px;color:var(--muted);margin-top:12px}
+@media(max-width:820px){.app{display:block}.side{position:fixed;left:-270px;top:0;width:260px;z-index:100;transition:left .15s;height:100vh}.side.open{left:0}.main{padding:15px}.menu{display:inline-block}.top h2{font-size:22px}.grid,.stats{grid-template-columns:1fr}.ages{grid-template-columns:1fr}.card{padding:16px}.actions>*{width:100%}.trip-actions{flex-direction:column}.trip-actions button{width:100%}}
+</style>
 </head>
 <body>
-  <div class="aurora aurora-a"></div><div class="aurora aurora-b"></div>
-  <div class="app-shell">
-    <aside class="sidebar" id="sidebar">
-      <div class="brand"><div class="brand-mark">✦</div><div><strong>Alerta Viagem</strong><span>PRO</span></div></div>
-      <nav>
-        <button class="nav-item active" data-view="dashboard"><span>⌂</span>Visão geral</button>
-        <button class="nav-item" data-view="search"><span>⌕</span>Nova busca</button>
-        <button class="nav-item" data-view="saved"><span>◎</span>Minhas buscas</button>
-        <button class="nav-item" data-view="travel-management"><span>◷</span>Gerenciamento de viagens</button>
-        <button class="nav-item" data-view="alerts"><span>◉</span>Alertas</button>
-        <button class="nav-item" data-view="admin"><span>◇</span>Administração</button>
-      </nav>
-      <div class="side-status"><i></i><div><b>Motor inteligente</b><small>Pronto para analisar</small></div></div>
-      <button class="profile"><span class="avatar">S</span><span><b>Samuel</b><small>Administrador</small></span><span>⌄</span></button>
-    </aside>
-
-    <main class="main">
-      <header class="topbar">
-        <button id="menuBtn" class="icon-btn mobile-only" aria-label="Abrir menu">☰</button>
-        <div><p class="eyebrow">CENTRAL INTELIGENTE DE VIAGENS</p><h1 id="pageTitle">Visão geral</h1></div>
-        <div class="top-actions"><button id="themeBtn" class="icon-btn" title="Alternar tema">◐</button><button id="quickSearch" class="primary compact">+ Nova busca</button></div>
-      </header>
-
-      <section class="view active" id="view-dashboard">
-        <div class="hero-panel glass">
-          <div class="hero-copy"><span class="pill glow">IA DE OPORTUNIDADES</span><h2>Viaje melhor usando seus pontos e seu dinheiro.</h2><p>Compare passagens, hotéis e pacotes completos. Escolha exatamente quais programas de fidelidade devem ser monitorados.</p><button class="primary" data-go="search">Começar uma busca <span>→</span></button></div>
-          <div class="orb"><div class="orb-core">✦</div><span class="orbit o1"></span><span class="orbit o2"></span><span class="orbit o3"></span></div>
-        </div>
-
-        <div class="stats-grid">
-          <article class="stat-card glass"><span class="stat-icon">⌕</span><div><small>Buscas salvas</small><strong id="statSearches">0</strong><em>monitoramento configurado</em></div></article>
-          <article class="stat-card glass"><span class="stat-icon">◉</span><div><small>Alertas automáticos</small><strong id="statAlerts">0</strong><em>canal ainda não conectado</em></div></article>
-          <article class="stat-card glass"><span class="stat-icon">✦</span><div><small>Melhor economia</small><strong id="statSaving">R$ 0</strong><em>preços reais encontrados</em></div></article>
-          <article class="stat-card glass"><span class="stat-icon">◇</span><div><small>Pontos cadastrados</small><strong id="statPoints">160 mil</strong><em>programas selecionados</em></div></article>
-        </div>
-
-        <div class="two-col">
-          <section class="panel glass"><div class="panel-head"><div><span class="eyebrow">OPORTUNIDADES</span><h3>Ofertas em destaque</h3></div><button class="text-btn" data-go="search">Ver todas →</button></div><div id="dealList" class="deal-list"></div></section>
-          <section class="panel glass"><div class="panel-head"><div><span class="eyebrow">SEUS PONTOS</span><h3>Carteira de fidelidade</h3></div><button class="text-btn" data-open="wallet">Editar</button></div><div class="wallet-list" id="walletList"></div></section>
-        </div>
-      </section>
-
-      <section class="view" id="view-search">
-        <div class="search-layout">
-          <form id="searchForm" class="panel glass search-form">
-            <div class="panel-head"><div><span class="eyebrow">BUSCA INTELIGENTE</span><h3>Monte sua viagem</h3></div><span class="step-badge">1 de 1</span></div>
-            <div class="form-grid">
-              <div class="field span-2 autocomplete-wrap"><label>Origem</label><div class="input-icon"><span>⌖</span><input id="origin" autocomplete="off" placeholder="Digite a cidade ou aeroporto" required /></div><div class="suggestions" id="originSuggestions"></div></div>
-              <div class="field span-2 autocomplete-wrap"><label>Destino</label><div class="input-icon"><span>⌖</span><input id="destination" autocomplete="off" placeholder="Digite a cidade ou aeroporto" /></div><div class="suggestions" id="destinationSuggestions"></div></div>
-              <label class="switch-line span-4"><input type="checkbox" id="anyDestination"><span class="switch"></span><span><b>Encontrar qualquer destino barato</b><small>A IA procura automaticamente as melhores oportunidades.</small></span></label>
-              <div class="field"><label>Ida</label><input type="date" id="departure" required></div>
-              <div class="field"><label>Volta</label><input type="date" id="return"></div>
-              <div class="field"><label>Adultos</label><div class="counter"><button type="button" data-counter="adults" data-delta="-1">−</button><input id="adults" value="1" readonly><button type="button" data-counter="adults" data-delta="1">+</button></div></div>
-              <div class="field"><label>Crianças</label><div class="counter"><button type="button" data-counter="children" data-delta="-1">−</button><input id="children" value="0" readonly><button type="button" data-counter="children" data-delta="1">+</button></div></div>
-              <div id="childAges" class="child-ages span-4 hidden"></div>
-              <div class="field span-2"><label>Como prefere pagar?</label><select id="preference"><option value="cash">Dinheiro</option><option value="points">Pontos reais do programa</option><option value="mixed">Pontos + dinheiro reais</option><option value="best">Comparar todas as opções reais</option></select></div>
-              <div class="field span-2"><label>Tipo de busca</label><select id="tripType"><option value="complete">Voo + hotel (pacote completo)</option><option value="flight">Somente passagem aérea</option><option value="hotel">Somente hotel</option></select></div>
-              <div class="field span-4 hidden" id="loyaltyProgramField"><label>Programa de fidelidade a monitorar</label><select id="loyaltyProgram"><option value="azul" selected>Somente Azul Fidelidade</option><option value="latam">Somente LATAM Pass</option><option value="smiles">Somente Smiles</option><option value="all">Todos os programas selecionados</option></select><small id="loyaltyProgramHelp">Quando Azul estiver selecionada, resultados de LATAM e Smiles não serão mostrados.</small></div>
-            </div>
-            <div class="search-footer"><div><b>Resultados reais, sem estimativas</b><small>O sistema pesquisa rotas nacionais e internacionais por cidade ou código IATA.</small></div><button class="primary" type="submit"><span>✦</span> Analisar melhores opções</button></div>
-          </form>
-
-          <aside class="panel glass ai-side"><span class="pill glow">ASSISTENTE IA</span><h3>O que será analisado?</h3><ul><li><i>✓</i>Preço total para todos</li><li><i>✓</i>Pontos reais do programa escolhido</li><li><i>✓</i>Taxas, escalas e bagagem</li><li><i>✓</i>Voo, hotel e pacote</li><li><i>✓</i>Rotas nacionais e internacionais</li></ul><div class="ai-note"><span>✦</span><p>Nenhum valor em pontos será inventado ou calculado por estimativa.</p></div></aside>
-        </div>
-        <section id="resultsPanel" class="panel glass results-panel hidden"><div class="panel-head"><div><span class="eyebrow">ANÁLISE CONCLUÍDA</span><h3>Melhores opções encontradas</h3></div><div class="results-actions"><button id="saveSearch" class="secondary">Salvar busca</button><button id="exportResults" class="secondary">Exportar resumo</button></div></div><div id="aiRecommendation" class="recommendation"></div><div id="resultCards" class="result-grid"></div></section>
-      </section>
-
-      <section class="view" id="view-saved"><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">MONITORAMENTO</span><h3>Minhas buscas</h3></div><button class="primary compact" data-go="search">+ Nova busca</button></div><div id="savedList" class="saved-list"></div></section></section>
-
-      <section class="view" id="view-alerts"><div class="two-col alerts-layout"><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">PREFERÊNCIAS</span><h3>Notificações</h3></div><span id="alertStatus">Configuração local</span></div><div id="alertControls" class="alert-controls"></div><p class="info-note">Estas opções ficam salvas no aparelho. O envio automático fora do aplicativo ainda depende da conexão com WhatsApp/e-mail e de uma rotina agendada no servidor.</p></section><section class="panel glass"><span class="pill glow">CANAIS</span><h3>Como você quer ser avisado?</h3><div class="channel-card"><span>◉</span><div><b>WhatsApp</b><small>Avisos rápidos no celular</small></div><em>Ainda não conectado</em></div><div class="channel-card"><span>✉</span><div><b>E-mail</b><small>Resumo completo com comparação</small></div><em>Ainda não conectado</em></div><p class="info-note">Quando os canais forem conectados, o servidor poderá pesquisar periodicamente e avisar mesmo com o aplicativo fechado.</p></section></div></section>
-
-      <section class="view" id="view-admin"><div class="admin-stats stats-grid"><article class="stat-card glass"><span class="stat-icon">◇</span><div><small>Usuários</small><strong>12</strong><em>8 ativos</em></div></article><article class="stat-card glass"><span class="stat-icon">◷</span><div><small>Pendentes</small><strong>3</strong><em>aguardando análise</em></div></article><article class="stat-card glass"><span class="stat-icon">⊘</span><div><small>Bloqueados</small><strong>1</strong><em>acesso suspenso</em></div></article><article class="stat-card glass"><span class="stat-icon">R$</span><div><small>Planos ativos</small><strong>8</strong><em>receita recorrente</em></div></article></div><section class="panel glass"><div class="panel-head"><div><span class="eyebrow">GESTÃO</span><h3>Usuários e planos</h3></div><button class="primary compact">+ Novo usuário</button></div><div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Plano</th><th>Status</th><th>Vencimento</th><th>Ações</th></tr></thead><tbody id="userTable"></tbody></table></div></section></section>
-    </main>
-  </div>
-
-  <dialog id="walletDialog"><form method="dialog" class="modal glass"><div class="panel-head"><div><span class="eyebrow">CARTEIRA</span><h3>Saldo de pontos</h3></div><button class="icon-btn">×</button></div><div id="walletInputs" class="wallet-inputs"></div><button id="saveWallet" class="primary" value="default">Salvar carteira</button></form></dialog>
-  <div id="toast" class="toast"></div>
-  <script src="safari-stability.js?v=1"></script>
-  <script src="app.js?v=2"></script>
-  <script src="international-airports.js?v=2"></script>
-  <script src="fixes.js?v=5"></script>
-  <script src="ui-fixes.js?v=2"></script>
-  <script src="travelers.js?v=5"></script>
-  <script src="points-balance.js?v=2"></script>
-  <script src="featured-offers.js?v=8"></script>
-  <script src="ai-monitor.js?v=2"></script>
-  <script src="guardian-mode.js?v=3"></script>
-  <script src="trip-type-fix.js?v=3"></script>
-  <script src="smart-search.js?v=3"></script>
-  <script src="final-results-fix.js?v=1"></script>
-  <script src="booking-links-fix.js?v=2"></script>
-  <script src="travel-management.js?v=7"></script>
-  <script src="world-airport-search.js?v=3"></script>
-  <script src="travel-monitor-sync.js?v=4"></script>
-  <script src="mobile-navigation-fix.js?v=2"></script>
-</body>
-</html>
+<div class="app">
+<aside class="side" id="side"><div class="brand">Alerta Viagem <small>PRO</small></div><nav class="nav">
+<button class="active" data-view="dashboard">Visão geral</button><button data-view="search">Nova busca</button><button data-view="saved">Minhas buscas</button><button data-view="manage">Gerenciamento de viagens</button><button data-view="alerts">Alertas</button>
+</nav></aside>
+<main class="main"><header class="top"><button class="secondary menu" id="menu">☰</button><h2 id="title">Visão geral</h2><button class="primary" data-go="search">+ Nova busca</button></header>
+<section class="view active" id="dashboard"><div class="card hero"><span style="color:#54d8ff;font-weight:900">IA DE OPORTUNIDADES</span><h1>Viaje melhor usando seus pontos e seu dinheiro.</h1><p>Pesquise passagens, hotéis e pacotes completos em uma plataforma leve para celular e computador.</p><button class="primary" data-go="search">Começar uma busca</button></div><div class="stats"><div class="card stat"><span>Buscas salvas</span><strong id="savedCount">0</strong></div><div class="card stat"><span>Viagens monitoradas</span><strong id="tripCount">0</strong></div><div class="card stat"><span>Status</span><strong style="color:var(--green);font-size:22px">Online</strong></div></div></section>
+<section class="view" id="search"><div class="card"><h2 class="section-title">Monte sua viagem</h2><form id="searchForm"><div class="grid">
+<div class="field"><label>Origem</label><input id="origin" list="airports" placeholder="Cidade ou aeroporto" required></div><div class="field"><label>Destino</label><input id="destination" list="airports" placeholder="Cidade ou aeroporto" required></div>
+<div class="field"><label>Data de ida</label><input type="date" id="departure" required></div><div class="field"><label>Data de volta</label><input type="date" id="returnDate"></div>
+<div class="field"><label>Adultos</label><div class="counter"><button type="button" data-count="adults" data-delta="-1">−</button><input id="adults" value="1" readonly><button type="button" data-count="adults" data-delta="1">+</button></div></div>
+<div class="field"><label>Crianças</label><div class="counter"><button type="button" data-count="children" data-delta="-1">−</button><input id="children" value="0" readonly><button type="button" data-count="children" data-delta="1">+</button></div></div>
+<div class="field full"><label>Idade das crianças</label><div id="searchAges" class="ages muted">Nenhuma criança adicionada.</div></div>
+<div class="field"><label>Tipo de busca</label><select id="tripType"><option value="complete">Voo + hotel (pacote completo)</option><option value="flight">Somente passagem aérea</option><option value="hotel">Somente hotel</option></select></div>
+<div class="field"><label>Preferência de pagamento</label><select id="preference"><option value="best">Comparar pontos e dinheiro</option><option value="cash">Somente dinheiro</option><option value="points">Somente pontos</option><option value="mixed">Pontos + dinheiro</option></select></div>
+</div><div class="actions"><button class="primary" type="submit">Analisar melhores opções</button><button class="secondary" type="button" id="saveCurrent">Salvar esta busca</button></div></form><div id="searchMessage"></div><div id="results"></div></div></section>
+<section class="view" id="saved"><div class="card"><h2 class="section-title">Minhas buscas</h2><div id="savedList"></div></div></section>
+<section class="view" id="manage"><div class="card"><h2 class="section-title">Gerenciamento de viagens</h2><form id="manageForm"><input type="hidden" id="editId"><div class="grid">
+<div class="field"><label>Origem</label><input id="mOrigin" list="airports" required></div><div class="field"><label>Destino</label><input id="mDestination" list="airports" required></div>
+<div class="field"><label>Data de ida</label><input type="date" id="mDeparture" required></div><div class="field"><label>Data de volta</label><input type="date" id="mReturn"></div>
+<div class="field"><label>Adultos</label><input type="number" id="mAdults" min="1" max="9" value="1"></div><div class="field"><label>Crianças</label><input type="number" id="mChildren" min="0" max="8" value="0"></div>
+<div class="field full"><label>Idade das crianças</label><div id="manageAges" class="ages muted">Nenhuma criança adicionada.</div></div>
+<div class="field"><label>Preferência</label><select id="mPreference"><option value="best">Pontos e dinheiro</option><option value="points">Somente pontos</option><option value="cash">Somente dinheiro</option><option value="mixed">Pontos + dinheiro</option></select></div>
+<div class="field"><label>Receber por</label><select id="mChannel"><option value="whatsapp">WhatsApp</option><option value="email">E-mail</option><option value="both">WhatsApp e e-mail</option></select></div>
+<div class="field full"><label>Frequência</label><select id="mFrequency"><option value="better">Quando encontrar algo melhor</option><option value="daily">Resumo diário</option><option value="weekly">Resumo semanal</option></select></div>
+</div><div class="actions"><button class="primary" type="submit">Salvar e ativar viagem</button><button class="secondary" type="button" id="clearManage">Limpar</button></div></form><div id="manageMessage"></div></div><div class="card"><h2 class="section-title">Viagens salvas</h2><div id="tripList"></div></div></section>
+<section class="view" id="alerts"><div class="card"><h2 class="section-title">Alertas</h2><label class="toggle"><input type="checkbox" id="alertFlights" checked> Passagens</label><label class="toggle"><input type="checkbox" id="alertHotels" checked> Hotéis</label><label class="toggle"><input type="checkbox" id="alertPackages" checked> Pacotes completos</label><p class="footer-note">As preferências ficam salvas neste aparelho. O envio automático por WhatsApp e e-mail depende da integração do servidor.</p></div></section>
+</main></div>
+<datalist id="airports"><option value="Cacoal (OAL)"><option value="Ji-Paraná (JPR)"><option value="Vilhena (BVH)"><option value="Porto Velho (PVH)"><option value="Cuiabá (CGB)"><option value="São Paulo Guarulhos (GRU)"><option value="Campinas (VCP)"><option value="Brasília (BSB)"><option value="Salvador (SSA)"><option value="Recife (REC)"><option value="Fortaleza (FOR)"><option value="Rio de Janeiro Galeão (GIG)"><option value="Belo Horizonte Confins (CNF)"><option value="Curitiba (CWB)"><option value="Florianópolis (FLN)"><option value="Orlando (MCO)"><option value="Miami (MIA)"><option value="Lisboa (LIS)"><option value="Paris (CDG)"></datalist>
+<script>
+'use strict';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const safeParse=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||'null')||fallback}catch{return fallback}};
+let saved=safeParse('avp_saved',[]),trips=safeParse('avp_trips',[]),currentSearch=null;
+const persist=()=>{localStorage.setItem('avp_saved',JSON.stringify(saved));localStorage.setItem('avp_trips',JSON.stringify(trips));renderAll()};
+function showView(name){$$('.view').forEach(v=>v.classList.toggle('active',v.id===name));$$('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===name));$('#title').textContent={dashboard:'Visão geral',search:'Nova busca',saved:'Minhas buscas',manage:'Gerenciamento de viagens',alerts:'Alertas'}[name]||'';$('#side').classList.remove('open');window.scrollTo(0,0)}
+$$('[data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));$$('[data-go]').forEach(b=>b.onclick=()=>showView(b.dataset.go));$('#menu').onclick=()=>$('#side').classList.toggle('open');
+function code(v){const m=String(v||'').toUpperCase().match(/\(([A-Z]{3})\)/)||String(v||'').toUpperCase().match(/^([A-Z]{3})$/);return m?m[1]:''}
+function msg(target,text,error=false){target.innerHTML=`<div class="notice ${error?'error':''}">${text}</div>`}
+function renderAges(container,count,prefix,values=[]){count=Math.max(0,Math.min(8,Number(count)||0));if(!count){container.className='ages muted';container.textContent='Nenhuma criança adicionada.';return}container.className='ages';container.innerHTML=Array.from({length:count},(_,i)=>`<div class="field"><label>Criança ${i+1}</label><select class="${prefix}Age">${Array.from({length:18},(_,age)=>`<option value="${age}" ${Number(values[i]??0)===age?'selected':''}>${age===0?'Menos de 1 ano':age+' ano'+(age===1?'':'s')}</option>`).join('')}</select></div>`).join('')}
+function changeCounter(id,delta){const el=$('#'+id),min=id==='adults'?1:0;el.value=Math.max(min,Math.min(id==='adults'?9:8,Number(el.value)+delta));if(id==='children')renderAges($('#searchAges'),el.value,'search')}
+$$('[data-count]').forEach(b=>b.onclick=()=>changeCounter(b.dataset.count,Number(b.dataset.delta)));$('#mChildren').oninput=()=>renderAges($('#manageAges'),$('#mChildren').value,'manage');
+function defaultDates(){const d=new Date();d.setDate(d.getDate()+20);$('#departure').value=d.toISOString().slice(0,10);$('#mDeparture').value=d.toISOString().slice(0,10);d.setDate(d.getDate()+5);$('#returnDate').value=d.toISOString().slice(0,10);$('#mReturn').value=d.toISOString().slice(0,10)}
+defaultDates();renderAges($('#searchAges'),0,'search');renderAges($('#manageAges'),0,'manage');
+async function request(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||data.message||'O serviço não respondeu.');return data}
+function googleFlightUrl(s){const q=`Flights from ${code(s.origin)} to ${code(s.destination)} on ${s.departure}${s.returnDate?' returning '+s.returnDate:''}`;return `https://www.google.com/travel/flights?q=${encodeURIComponent(q)}&hl=pt-BR&curr=BRL`}
+function googleHotelUrl(s){const city=String(s.destination).split('(')[0].trim();return `https://www.google.com/travel/hotels?q=${encodeURIComponent('Hotéis em '+city)}&hl=pt-BR&curr=BRL`}
+function mapFlights(data){return [...(data.best_flights||[]),...(data.other_flights||[])].slice(0,8)}
+function mapHotels(data){return (data.properties||data.hotels_results||[]).slice(0,8)}
+$('#searchForm').onsubmit=async e=>{e.preventDefault();const s=currentSearch={origin:$('#origin').value.trim(),destination:$('#destination').value.trim(),departure:$('#departure').value,returnDate:$('#returnDate').value,adults:Number($('#adults').value),children:Number($('#children').value),childAges:$$('.searchAge').map(x=>Number(x.value)),tripType:$('#tripType').value,preference:$('#preference').value};if(!code(s.origin)||!code(s.destination))return msg($('#searchMessage'),'Escolha origem e destino com o código do aeroporto, como Cacoal (OAL).',true);if(!s.departure)return msg($('#searchMessage'),'Informe a data de ida.',true);msg($('#searchMessage'),'Pesquisando preços reais. Aguarde alguns segundos...');$('#results').innerHTML='';try{let flights=[],hotels=[];const body={departure_id:code(s.origin),arrival_id:code(s.destination),outbound_date:s.departure,return_date:s.returnDate||undefined,adults:s.adults,children:s.children};if(s.tripType!=='hotel')flights=mapFlights(await request('/api/flights',body));if(s.tripType!=='flight')hotels=mapHotels(await request('/api/hotels',{q:String(s.destination).split('(')[0].trim(),check_in_date:s.departure,check_out_date:s.returnDate,adults:s.adults,children:s.children}));renderResults(s,flights,hotels);msg($('#searchMessage'),'Pesquisa concluída.');}catch(err){msg($('#searchMessage'),err.message,true)}};
+function renderResults(s,flights,hotels){const out=[];flights.forEach((f,i)=>{const legs=f.flights||[],airline=[...new Set(legs.map(x=>x.airline).filter(Boolean))].join(' + ')||'Voo encontrado';out.push(`<div class="result"><h3>${airline}</h3><div class="muted">${code(s.origin)} → ${code(s.destination)}</div><div class="price">${Number(f.price||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div><div class="actions"><a class="primary" style="text-decoration:none" href="${googleFlightUrl(s)}">Abrir voo</a></div></div>`)});hotels.forEach(h=>out.push(`<div class="result"><h3>${h.name||'Hotel encontrado'}</h3><div class="muted">${h.overall_rating?'Avaliação '+h.overall_rating:''}</div><div class="price">${h.rate_per_night?.lowest||h.total_rate?.lowest||'Consultar valor'}</div><div class="actions"><a class="primary" style="text-decoration:none" href="${h.link||googleHotelUrl(s)}">Abrir hotel</a></div></div>`));if(!out.length)out.push('<div class="empty">Nenhuma opção disponível para essa pesquisa.</div>');$('#results').innerHTML=out.join('')}
+$('#saveCurrent').onclick=()=>{if(!currentSearch)return msg($('#searchMessage'),'Faça uma pesquisa antes de salvar.',true);saved.unshift({...currentSearch,id:Date.now()});persist();msg($('#searchMessage'),'Busca salva com sucesso.')};
+function clearManage(){$('#manageForm').reset();$('#editId').value='';$('#mAdults').value=1;$('#mChildren').value=0;defaultDates();renderAges($('#manageAges'),0,'manage')}
+$('#clearManage').onclick=clearManage;
+$('#manageForm').onsubmit=e=>{e.preventDefault();const item={id:Number($('#editId').value)||Date.now(),origin:$('#mOrigin').value.trim(),destination:$('#mDestination').value.trim(),departure:$('#mDeparture').value,returnDate:$('#mReturn').value,adults:Number($('#mAdults').value),children:Number($('#mChildren').value),childAges:$$('.manageAge').map(x=>Number(x.value)),preference:$('#mPreference').value,channel:$('#mChannel').value,frequency:$('#mFrequency').value,active:true};if(!code(item.origin)||!code(item.destination))return msg($('#manageMessage'),'Confirme origem e destino com o código do aeroporto.',true);if(!item.departure)return msg($('#manageMessage'),'Informe a data de ida.',true);const i=trips.findIndex(x=>x.id===item.id);if(i>=0)trips[i]=item;else trips.unshift(item);persist();msg($('#manageMessage'),'Viagem salva e monitoramento ativado.');clearManage()};
+function renderSaved(){const box=$('#savedList');box.innerHTML=saved.length?saved.map(s=>`<div class="trip"><h3>${s.origin} → ${s.destination}</h3><div class="muted">${s.departure}${s.returnDate?' até '+s.returnDate:''} • ${s.adults+s.children} passageiro(s)</div><div class="trip-actions"><button class="danger" onclick="removeSaved(${s.id})">Excluir</button></div></div>`).join(''):'<div class="empty">Nenhuma busca salva.</div>'}
+window.removeSaved=id=>{saved=saved.filter(x=>x.id!==id);persist()};
+function renderTrips(){const box=$('#tripList');box.innerHTML=trips.length?trips.map(t=>`<div class="trip"><h3>${t.origin} → ${t.destination}</h3><div class="muted">${t.departure}${t.returnDate?' até '+t.returnDate:''} • ${t.adults} adulto(s) • ${t.children} criança(s)${t.childAges.length?' • idades: '+t.childAges.join(', '):''}</div><div class="muted">${t.channel} • ${t.frequency} • ${t.active?'Monitorando':'Pausado'}</div><div class="trip-actions"><button class="secondary" onclick="editTrip(${t.id})">Editar</button><button class="secondary" onclick="toggleTrip(${t.id})">${t.active?'Pausar':'Ativar'}</button><button class="danger" onclick="removeTrip(${t.id})">Excluir</button></div></div>`).join(''):'<div class="empty">Nenhuma viagem salva ainda.</div>'}
+window.editTrip=id=>{const t=trips.find(x=>x.id===id);if(!t)return;$('#editId').value=t.id;$('#mOrigin').value=t.origin;$('#mDestination').value=t.destination;$('#mDeparture').value=t.departure;$('#mReturn').value=t.returnDate||'';$('#mAdults').value=t.adults;$('#mChildren').value=t.children;$('#mPreference').value=t.preference;$('#mChannel').value=t.channel;$('#mFrequency').value=t.frequency;renderAges($('#manageAges'),t.children,'manage',t.childAges);window.scrollTo(0,0)};
+window.toggleTrip=id=>{const t=trips.find(x=>x.id===id);if(t)t.active=!t.active;persist()};window.removeTrip=id=>{trips=trips.filter(x=>x.id!==id);persist()};
+function renderAll(){renderSaved();renderTrips();$('#savedCount').textContent=saved.length;$('#tripCount').textContent=trips.filter(x=>x.active).length}
+renderAll();
+</script>
+</body></html>
