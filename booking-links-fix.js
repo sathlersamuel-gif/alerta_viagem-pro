@@ -42,13 +42,32 @@
     console.error('Falha ao preparar comparação exata:', error);
   }
 
+  function iataFrom(value) {
+    if (typeof extractIata === 'function') {
+      const found = String(extractIata(value) || '').toUpperCase();
+      if (/^[A-Z]{3}$/.test(found)) return found;
+    }
+    const raw = String(value || '').toUpperCase();
+    return (raw.match(/\(([A-Z]{3})\)/) || raw.match(/\b([A-Z]{3})\b/))?.[1] || '';
+  }
+
+  function routeIatas(result) {
+    const route = String(result?.route || '');
+    const codes = [...route.matchAll(/\b([A-Z]{3})\b/g)].map(match => match[1]);
+    return { departure: codes[0] || '', arrival: codes[1] || '' };
+  }
+
   function buildBookingUrl(result, search) {
     if (!result || (!result.bookingToken && !result.departureToken)) return '';
-    const route = String(result.route || '').split('→').map(value => value.trim());
+    const routeCodes = routeIatas(result);
+    const departureId = iataFrom(search?.origin) || routeCodes.departure;
+    const arrivalId = iataFrom(search?.destination) || routeCodes.arrival;
+    if (!departureId || !arrivalId || !search?.departure) return '';
+
     const params = new URLSearchParams({
-      departure_id: (route[0] || '').slice(0, 3),
-      arrival_id: (route[1] || '').slice(0, 3),
-      outbound_date: search?.departure || '',
+      departure_id: departureId,
+      arrival_id: arrivalId,
+      outbound_date: search.departure,
       adults: String(search?.adults || 1),
       children: String(search?.children || 0),
       airline: String(result.name || ''),
@@ -57,13 +76,18 @@
     if (search?.return) params.set('return_date', search.return);
     if (result.bookingToken) params.set('booking_token', result.bookingToken);
     if (result.departureToken) params.set('departure_token', result.departureToken);
-    params.set('_v', '3');
+    params.set('_v', '4');
     return `/api/flight-booking?${params.toString()}`;
   }
 
-  function readState() {
-    try { return { results: Array.isArray(currentResults) ? currentResults : [], search: currentSearch || null }; }
-    catch { return { results: [], search: null }; }
+  function openLink(url) {
+    if (!url) return;
+    const absolute = new URL(url, window.location.origin).toString();
+    // No iPhone/Safari, abrir na mesma aba evita bloqueio de pop-up e tela em branco.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
+    if (isIOS || isSafari) window.location.assign(absolute);
+    else window.open(absolute, '_blank', 'noopener,noreferrer');
   }
 
   function button(label, className, url) {
@@ -71,7 +95,7 @@
     element.type = 'button';
     element.className = className;
     element.textContent = label;
-    element.onclick = () => window.open(url, '_blank', 'noopener,noreferrer');
+    element.onclick = () => openLink(url);
     return element;
   }
 
@@ -83,7 +107,11 @@
   }
 
   function applyExactLinks() {
-    const { results, search } = readState();
+    const { results, search } = (() => {
+      try { return { results: Array.isArray(currentResults) ? currentResults : [], search: currentSearch || null }; }
+      catch { return { results: [], search: null }; }
+    })();
+
     const cards = [...document.querySelectorAll('#resultCards .result-card')];
     cards.forEach((card, index) => {
       const result = results[index];
@@ -94,17 +122,17 @@
         if (result.sourceUrl) {
           oldAction.dataset.url = result.sourceUrl;
           oldAction.textContent = 'Abrir oferta oficial da Azul';
-          oldAction.onclick = () => window.open(result.sourceUrl, '_blank', 'noopener,noreferrer');
+          oldAction.onclick = () => openLink(result.sourceUrl);
         } else unavailable(oldAction);
         return;
       }
 
       if (result.kind === 'flight') {
         const url = buildBookingUrl(result, search);
-        if (!url) return unavailable(oldAction);
+        if (!url) return unavailable(oldAction, 'Não foi possível montar o link desta tarifa');
         oldAction.dataset.url = url;
         oldAction.textContent = `Abrir tarifa de ${result.name || 'voo'} no vendedor`;
-        oldAction.onclick = () => window.open(url, '_blank', 'noopener,noreferrer');
+        oldAction.onclick = () => openLink(url);
         return;
       }
 
@@ -124,13 +152,21 @@
         if (!result.link) return unavailable(oldAction);
         oldAction.dataset.url = result.link;
         oldAction.textContent = 'Abrir esta oferta do hotel';
-        oldAction.onclick = () => window.open(result.link, '_blank', 'noopener,noreferrer');
+        oldAction.onclick = () => openLink(result.link);
       }
     });
   }
 
   if (resultsBox) {
-    new MutationObserver(() => setTimeout(applyExactLinks, 0)).observe(resultsBox, { childList: true, subtree: true });
-    setTimeout(applyExactLinks, 0);
+    let scheduled = false;
+    new MutationObserver(() => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        applyExactLinks();
+      });
+    }).observe(resultsBox, { childList: true, subtree: true });
+    requestAnimationFrame(applyExactLinks);
   }
 })();
