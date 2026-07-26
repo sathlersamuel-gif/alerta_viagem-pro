@@ -1,0 +1,70 @@
+name: Ampliar aeroportos internacionais
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/expand-airports.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-airports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Adicionar principais destinos internacionais
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+          start = text.find('<datalist id="airports">')
+          end = text.find('</datalist>', start)
+          if start < 0 or end < 0:
+              raise SystemExit('Lista de aeroportos não encontrada.')
+
+          airports = [
+              'Cacoal (OAL)', 'Ji-Paraná (JPR)', 'Vilhena (BVH)', 'Porto Velho (PVH)', 'Cuiabá (CGB)',
+              'São Paulo Guarulhos (GRU)', 'São Paulo Congonhas (CGH)', 'Campinas (VCP)', 'Brasília (BSB)',
+              'Rio de Janeiro Galeão (GIG)', 'Rio de Janeiro Santos Dumont (SDU)', 'Belo Horizonte Confins (CNF)',
+              'Salvador (SSA)', 'Recife (REC)', 'Fortaleza (FOR)', 'Maceió (MCZ)', 'Natal (NAT)', 'João Pessoa (JPA)',
+              'Porto Alegre (POA)', 'Curitiba (CWB)', 'Florianópolis (FLN)', 'Foz do Iguaçu (IGU)', 'Manaus (MAO)', 'Belém (BEL)',
+              'Buenos Aires Ezeiza, Argentina (EZE)', 'Buenos Aires Aeroparque, Argentina (AEP)', 'Mendoza, Argentina (MDZ)',
+              'Córdoba, Argentina (COR)', 'Bariloche, Argentina (BRC)',
+              'Santiago, Chile (SCL)', 'Calama / Atacama, Chile (CJC)', 'Puerto Montt, Chile (PMC)',
+              'Lisboa, Portugal (LIS)', 'Porto, Portugal (OPO)', 'Faro, Portugal (FAO)',
+              'Montevidéu, Uruguai (MVD)', 'Punta del Este, Uruguai (PDP)',
+              'Assunção, Paraguai (ASU)', 'Lima, Peru (LIM)', 'Cusco, Peru (CUZ)',
+              'Bogotá, Colômbia (BOG)', 'Cartagena, Colômbia (CTG)', 'Medellín, Colômbia (MDE)',
+              'Cidade do Panamá, Panamá (PTY)', 'Cancún, México (CUN)', 'Cidade do México (MEX)',
+              'Orlando, Estados Unidos (MCO)', 'Miami, Estados Unidos (MIA)', 'Nova York JFK, Estados Unidos (JFK)',
+              'Nova York Newark, Estados Unidos (EWR)', 'Los Angeles, Estados Unidos (LAX)', 'Las Vegas, Estados Unidos (LAS)',
+              'Boston, Estados Unidos (BOS)', 'Fort Lauderdale, Estados Unidos (FLL)',
+              'Toronto, Canadá (YYZ)', 'Vancouver, Canadá (YVR)', 'Montreal, Canadá (YUL)',
+              'Madri, Espanha (MAD)', 'Barcelona, Espanha (BCN)', 'Paris, França (CDG)', 'Londres Heathrow, Reino Unido (LHR)',
+              'Roma, Itália (FCO)', 'Milão, Itália (MXP)', 'Amsterdã, Holanda (AMS)', 'Frankfurt, Alemanha (FRA)',
+              'Zurique, Suíça (ZRH)', 'Dublin, Irlanda (DUB)', 'Atenas, Grécia (ATH)',
+              'Dubai, Emirados Árabes (DXB)', 'Doha, Catar (DOH)', 'Istambul, Turquia (IST)',
+              'Tóquio Haneda, Japão (HND)', 'Tóquio Narita, Japão (NRT)', 'Seul, Coreia do Sul (ICN)',
+              'Bangkok, Tailândia (BKK)', 'Singapura (SIN)', 'Sydney, Austrália (SYD)'
+          ]
+          datalist = '<datalist id="airports">' + ''.join(f'<option value="{a}">' for a in airports) + '</datalist>'
+          text = text[:start] + datalist + text[end + len('</datalist>'):]
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Salvar alteração
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Adiciona Chile, Argentina, Portugal e principais destinos"
+          git push
