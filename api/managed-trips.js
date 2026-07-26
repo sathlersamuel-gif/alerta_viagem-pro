@@ -54,7 +54,14 @@ async function checkTrip(trip) {
 }
 
 module.exports = async function handler(req, res) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return res.status(503).json({ error: 'O banco online ainda não foi conectado ao projeto na Vercel.' });
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return res.status(503).json({
+      ok: false,
+      code: 'BLOB_NOT_CONFIGURED',
+      missing: ['BLOB_READ_WRITE_TOKEN'],
+      error: 'A sincronização online está sem o banco Vercel Blob. É necessário conectar um Blob Store ao projeto na Vercel.'
+    });
+  }
   const clientId = String(req.query.clientId || req.body?.clientId || '').toLowerCase();
   if (!CLIENT_PATTERN.test(clientId)) return res.status(400).json({ error: 'Identificador do monitoramento inválido.' });
   try {
@@ -86,6 +93,11 @@ module.exports = async function handler(req, res) {
     }
     res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ error: 'Método não permitido.' });
   } catch (error) {
-    console.error('Managed trips error:', error); return res.status(500).json({ error: 'Não foi possível sincronizar as viagens.' });
+    console.error('Managed trips error:', error);
+    return res.status(500).json({
+      ok: false,
+      code: 'SYNC_FAILED',
+      error: error?.message ? `Não foi possível sincronizar as viagens: ${error.message}` : 'Não foi possível sincronizar as viagens.'
+    });
   }
 };
