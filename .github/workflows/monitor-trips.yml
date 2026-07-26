@@ -9,10 +9,16 @@ on:
     paths:
       - '.github/workflows/monitor-trips.yml'
 
+permissions:
+  contents: write
+
 jobs:
   monitor:
     runs-on: ubuntu-latest
     steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
       - name: Consultar viagens monitoradas
         env:
           MONITOR_URL: https://alerta-viagem-pro.vercel.app/api/monitor-trips
@@ -44,12 +50,48 @@ jobs:
           echo
           echo "HTTP status: $HTTP_STATUS"
 
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "::error::A API de monitoramento respondeu com HTTP $HTTP_STATUS."
-            exit 1
-          fi
+          python - "$HTTP_STATUS" <<'PY'
+          import json, sys
+          from datetime import datetime, timezone
 
-          if ! grep -q '"ok":true' response.json; then
-            echo "::error::A API respondeu, mas o monitoramento não confirmou execução bem-sucedida."
-            exit 1
+          status = int(sys.argv[1])
+          try:
+              with open('response.json', encoding='utf-8') as f:
+                  body = json.load(f)
+          except Exception as exc:
+              body = {'ok': False, 'error': f'Resposta inválida: {exc}'}
+
+          diagnostic = {
+              'checkedAt': datetime.now(timezone.utc).isoformat(),
+              'httpStatus': status,
+              'ok': bool(body.get('ok')) and 200 <= status < 300,
+              'configured': body.get('configured', True),
+              'checked': body.get('checked', 0),
+              'alerts': body.get('alerts', 0),
+              'errors': body.get('errors', 0),
+              'emailEnabled': body.get('emailEnabled', False),
+              'missing': body.get('missing', []),
+              'message': body.get('message') or body.get('error') or 'Execução concluída.'
+          }
+          with open('monitor-status.json', 'w', encoding='utf-8') as f:
+              json.dump(diagnostic, f, ensure_ascii=False, indent=2)
+
+          if not diagnostic['ok']:
+              print('::error::Monitoramento não confirmou execução bem-sucedida.')
+              sys.exit(1)
+          PY
+
+      - name: Salvar diagnóstico
+        if: always()
+        run: |
+          if [ ! -f monitor-status.json ]; then
+            printf '{"ok":false,"message":"A execução terminou antes de gerar diagnóstico."}\n' > monitor-status.json
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add monitor-status.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Atualiza diagnóstico do monitoramento [skip ci]"
+          git push
