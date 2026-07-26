@@ -1,4 +1,4 @@
-const { put, list } = require('@vercel/blob');
+const { put, get } = require('@vercel/blob');
 
 const CLIENT_PATTERN = /^[a-f0-9]{32}$/;
 const pathFor = clientId => `monitoring/${clientId}.json`;
@@ -20,6 +20,17 @@ function summarizeFlight(item) {
   };
 }
 
+async function streamToJson(stream) {
+  const reader = stream.getReader();
+  const chunks = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(Buffer.from(value));
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
 async function checkTrip(trip) {
   if (!trip.active) return trip;
   if (!process.env.SERPAPI_API_KEY) {
@@ -30,24 +41,14 @@ async function checkTrip(trip) {
 
   try {
     const params = new URLSearchParams({
-      engine: 'google_flights',
-      api_key: process.env.SERPAPI_API_KEY,
-      hl: 'pt',
-      gl: 'br',
-      currency: 'BRL',
-      type: trip.return ? '1' : '2',
-      departure_id: trip.origin,
-      arrival_id: trip.destination,
-      outbound_date: trip.departure,
-      adults: String(trip.adults || 1),
-      children: String(trip.children || 0),
-      sort_by: '2'
+      engine: 'google_flights', api_key: process.env.SERPAPI_API_KEY, hl: 'pt', gl: 'br', currency: 'BRL',
+      type: trip.return ? '1' : '2', departure_id: trip.origin, arrival_id: trip.destination,
+      outbound_date: trip.departure, adults: String(trip.adults || 1), children: String(trip.children || 0), sort_by: '2'
     });
     if (trip.return) params.set('return_date', trip.return);
 
     const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`, {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store'
+      headers: { Accept: 'application/json' }, cache: 'no-store'
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data.error) throw new Error(data.error || 'Falha na consulta de voos.');
@@ -123,15 +124,13 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      if (!blobEnabled) {
-        return res.status(200).json({ ok: true, mode: 'device', trips: [] });
-      }
+      if (!blobEnabled) return res.status(200).json({ ok: true, mode: 'device', trips: [] });
 
-      const result = await list({ prefix: pathFor(clientId), limit: 1 });
-      if (!result.blobs.length) return res.status(200).json({ ok: true, mode: 'online', trips: [] });
-      const response = await fetch(result.blobs[0].url, { cache: 'no-store' });
-      if (!response.ok) return res.status(200).json({ ok: true, mode: 'online', trips: [] });
-      const data = await response.json();
+      const result = await get(pathFor(clientId), { access: 'private' });
+      if (!result || result.statusCode !== 200 || !result.stream) {
+        return res.status(200).json({ ok: true, mode: 'online', trips: [] });
+      }
+      const data = await streamToJson(result.stream);
       return res.status(200).json({ ok: true, mode: 'online', trips: Array.isArray(data.trips) ? data.trips : [] });
     }
 
@@ -143,7 +142,7 @@ module.exports = async function handler(req, res) {
         await put(
           pathFor(clientId),
           JSON.stringify({ clientId, trips: sanitized, updatedAt: new Date().toISOString() }),
-          { access: 'public', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 0 }
+          { access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 0 }
         );
       }
 
