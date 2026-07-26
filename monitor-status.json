@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-07-26T01:48:14.853119+00:00",
+  "httpStatus": 200,
+  "ok": true,
+  "configured": true,
+  "checked": 0,
+  "alerts": 0,
+  "errors": 0,
+  "emailEnabled": false,
+  "missing": [],
+  "message": "Execução concluída."
+}
