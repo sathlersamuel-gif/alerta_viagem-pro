@@ -8,7 +8,7 @@
   "crons": [
     {
       "path": "/api/monitor-trips",
-      "schedule": "0 8 * * *"
+      "schedule": "0 */6 * * *"
     }
   ],
   "headers": [
