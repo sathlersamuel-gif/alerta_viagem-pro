@@ -57,7 +57,57 @@
     });
   }
 
+  function installAutocompleteTouchFix() {
+    if (!document.querySelector('#avp-autocomplete-touch-fix')) {
+      const style = document.createElement('style');
+      style.id = 'avp-autocomplete-touch-fix';
+      style.textContent = `
+        .field { position: relative; z-index: 0; }
+        .field.avp-touch-open { z-index: 30000 !important; }
+        .avp-autocomplete.open {
+          z-index: 30001 !important;
+          pointer-events: auto !important;
+          touch-action: manipulation;
+          -webkit-overflow-scrolling: touch;
+          isolation: isolate;
+        }
+        .avp-autocomplete.open .avp-ac-item {
+          position: relative;
+          z-index: 30002;
+          pointer-events: auto !important;
+          touch-action: manipulation;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const syncOpenState = () => {
+      document.querySelectorAll('.avp-autocomplete').forEach(box => {
+        box.parentElement?.classList.toggle('avp-touch-open', box.classList.contains('open'));
+      });
+    };
+
+    syncOpenState();
+    new MutationObserver(syncOpenState).observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    const protectSuggestionTouch = event => {
+      const item = event.target.closest?.('.avp-autocomplete.open .avp-ac-item');
+      if (!item) return;
+      event.stopPropagation();
+    };
+
+    document.addEventListener('pointerdown', protectSuggestionTouch, true);
+    document.addEventListener('touchstart', protectSuggestionTouch, {capture:true, passive:true});
+    document.addEventListener('click', protectSuggestionTouch, true);
+  }
+
   activateDeals();
+  installAutocompleteTouchFix();
   const list = document.querySelector('#dealList');
   if (list) new MutationObserver(activateDeals).observe(list, {childList:true});
 })();
