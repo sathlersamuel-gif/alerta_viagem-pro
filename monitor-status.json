@@ -1,12 +1,12 @@
 {
-  "checkedAt": "2026-07-27T10:13:10.883424+00:00",
-  "httpStatus": 500,
-  "ok": false,
+  "checkedAt": "2026-07-27T15:17:13.760750+00:00",
+  "httpStatus": 200,
+  "ok": true,
   "configured": true,
-  "checked": 0,
+  "checked": 3,
   "alerts": 0,
-  "errors": 0,
+  "errors": 2,
   "emailEnabled": false,
   "missing": [],
-  "message": "Falha ao executar o monitoramento automático."
+  "message": "Execução concluída."
 }
