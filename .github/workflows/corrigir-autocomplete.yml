@@ -1,0 +1,105 @@
+name: Corrigir autocomplete de destinos
+
+on:
+  push:
+    paths:
+      - '.github/workflows/corrigir-autocomplete.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar autocomplete completo
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+
+          css = r'''
+          /* AUTOCOMPLETE COMPLETO DE DESTINOS */
+          .field{position:relative}.avp-autocomplete{display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;max-height:310px;overflow:auto;background:#091c2e;border:1px solid #2d5878;border-radius:13px;box-shadow:0 16px 38px #000c;z-index:5000}.avp-autocomplete.open{display:block}.avp-ac-item{display:block;width:100%;border:0;border-bottom:1px solid #1c3c55;background:transparent;color:#fff;padding:13px;text-align:left}.avp-ac-item:last-child{border-bottom:0}.avp-ac-item:active,.avp-ac-item.active{background:#17415f}.avp-ac-code{float:right;background:#173653;border:1px solid #2f5d7c;border-radius:7px;padding:2px 7px;color:#70d8ff;font-size:12px}.avp-ac-main{display:block;font-weight:850;padding-right:54px}.avp-ac-sub{display:block;color:#9eb8cb;font-size:12px;margin-top:3px}.avp-ac-empty{padding:14px;color:#a9bfd1}
+          '''
+
+          js = r'''
+          <script id="avp-autocomplete-completo">
+          (()=>{
+            'use strict';
+            const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+            const aliases=[
+              {c:'Argentina',r:'Neve e Patagônia',t:'Bariloche',i:'BRC'},
+              {c:'Argentina',r:'Neve e Patagônia',t:'Ushuaia',i:'USH'},
+              {c:'Argentina',r:'Neve e Patagônia',t:'El Calafate',i:'FTE'},
+              {c:'Argentina',r:'Neve e Patagônia',t:'San Martín de los Andes',i:'CPC'},
+              {c:'Chile',r:'Neve e Cordilheira',t:'Valle Nevado (via Santiago)',i:'SCL'},
+              {c:'Chile',r:'Neve e Cordilheira',t:'Farellones (via Santiago)',i:'SCL'},
+              {c:'Chile',r:'Neve e Cordilheira',t:'Portillo (via Santiago)',i:'SCL'}
+            ];
+            let destinos=[];
+            async function carregar(){
+              try{
+                const texto=await fetch('/destinos.html?v='+Date.now(),{cache:'no-store'}).then(r=>r.text());
+                const m=texto.match(/const D=`([\s\S]*?)`\.split\(';'\)/);
+                if(m) destinos=m[1].split(';').map(x=>{const[c,r,t,i]=x.split('|');return{c,r,t,i}});
+              }catch(e){}
+              destinos=[...aliases,...destinos].filter((d,p,a)=>d&&d.i&&d.t&&a.findIndex(x=>x.i===d.i&&x.t===d.t)===p);
+              iniciar();
+            }
+            function iniciar(){
+              ['origin','destination','mOrigin','mDestination'].forEach(configurar);
+            }
+            function configurar(id){
+              const input=document.getElementById(id);
+              if(!input||input.dataset.avpAutocomplete==='1')return;
+              input.dataset.avpAutocomplete='1';
+              input.removeAttribute('list');
+              input.setAttribute('autocomplete','off');
+              const box=document.createElement('div');box.className='avp-autocomplete';input.parentElement.appendChild(box);
+              let itens=[],ativo=-1;
+              const fechar=()=>{box.classList.remove('open');ativo=-1};
+              const selecionar=d=>{input.value=`${d.t}, ${d.c} (${d.i})`;input.dataset.iata=d.i;fechar();input.dispatchEvent(new Event('change',{bubbles:true}))};
+              const pesquisar=()=>{
+                const q=norm(input.value);input.dataset.iata='';
+                itens=destinos.map(d=>{
+                  const cidade=norm(d.t),pais=norm(d.c),regiao=norm(d.r),codigo=norm(d.i),tudo=`${cidade} ${pais} ${regiao} ${codigo}`;
+                  let score=99;
+                  if(codigo===q)score=0;else if(cidade.startsWith(q))score=1;else if(pais.startsWith(q))score=2;else if(regiao.startsWith(q))score=3;else if(tudo.includes(q))score=4;
+                  return{...d,score};
+                }).filter(d=>!q||d.score<99).sort((a,b)=>a.score-b.score||a.t.localeCompare(b.t,'pt-BR')).slice(0,14);
+                box.innerHTML=itens.length?itens.map((d,i)=>`<button type="button" class="avp-ac-item ${i===ativo?'active':''}" data-i="${i}"><span class="avp-ac-code">${d.i}</span><span class="avp-ac-main">${d.t}</span><span class="avp-ac-sub">${d.c} • ${d.r}</span></button>`).join(''):'<div class="avp-ac-empty">Nenhum destino encontrado. Tente cidade, país ou código do aeroporto.</div>';
+                box.classList.add('open');
+                box.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();selecionar(itens[Number(b.dataset.i)])}));
+              };
+              input.addEventListener('input',pesquisar);
+              input.addEventListener('focus',pesquisar);
+              input.addEventListener('keydown',e=>{
+                if(!box.classList.contains('open'))return;
+                if(e.key==='ArrowDown'){e.preventDefault();ativo=Math.min(itens.length-1,ativo+1);pesquisar()}
+                else if(e.key==='ArrowUp'){e.preventDefault();ativo=Math.max(0,ativo-1);pesquisar()}
+                else if(e.key==='Enter'&&ativo>=0){e.preventDefault();selecionar(itens[ativo])}
+                else if(e.key==='Escape')fechar();
+              });
+              input.addEventListener('blur',()=>setTimeout(fechar,220));
+            }
+            carregar();
+          })();
+          </script>
+          '''
+
+          if 'AUTOCOMPLETE COMPLETO DE DESTINOS' not in html:
+              html = html.replace('</style>', css + '\n</style>', 1)
+          if 'id="avp-autocomplete-completo"' not in html:
+              html = html.replace('</body>', js + '\n</body>', 1)
+          path.write_text(html, encoding='utf-8')
+      - name: Publicar correção
+        run: |
+          git config user.name "Alerta Viagem PRO"
+          git config user.email "actions@github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Integra autocomplete completo em todos os campos"
+          git push
