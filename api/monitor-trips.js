@@ -21,15 +21,11 @@ function summarizeFlight(item) {
   return { price:Number(item?.price)||null, airline:airlines.join(' + ')||'Companhia não informada', azul:isAzulFlight(item), departure:first.departure_airport?.time||'', arrival:last.arrival_airport?.time||'', stops:Math.max(0,legs.length-1), duration:Number(item?.total_duration)||null, bookingToken:item?.booking_token||'', departureToken:item?.departure_token||'' };
 }
 function buildSuggestions(data, trip) { return allFlights(data, trip).slice(0, 6).map(summarizeFlight).filter(item => item.price); }
-function shouldEmail(trip, price, now, decision) {
-  const improved = !trip.bestPrice || price < Number(trip.bestPrice);
-  const urgent = ['buy_cash','buy_cash_preserve_points','use_points'].includes(decision?.action);
-  if (!improved && !urgent) return false;
-  if (!trip.lastAlertAt || trip.frequency === 'instant') return true;
+function shouldEmail(trip, price, now) {
+  if (!price) return false;
+  if (!trip.lastAlertAt) return true;
   const elapsed = now - new Date(trip.lastAlertAt).getTime();
-  if (trip.frequency === 'daily') return elapsed >= 20*60*60*1000;
-  if (trip.frequency === 'weekly') return elapsed >= 6*24*60*60*1000;
-  return true;
+  return elapsed >= 2.75 * 60 * 60 * 1000;
 }
 async function searchTrip(trip) {
   const params = new URLSearchParams({ engine:'google_flights', api_key:process.env.SERPAPI_API_KEY, hl:'pt', gl:'br', currency:'BRL', type:trip.return?'1':'2', departure_id:trip.origin, arrival_id:trip.destination, outbound_date:trip.departure, adults:String(trip.adults||1), children:String(trip.children||0), sort_by:'2' });
@@ -67,8 +63,8 @@ async function sendAlert(resend,trip,result,oldPrice,decision,pointsOffer){
   const suggestionsHtml=options.map((item,index)=>`<div style="padding:12px 14px;margin:10px 0;border:1px solid ${item.azul?'#00a8e8':'#d7e6f5'};border-radius:12px"><b>${item.azul?'Azul em destaque':index===0?'Melhor opção encontrada':`Sugestão ${index+1}`}</b><br>${item.airline} • R$ ${item.price.toLocaleString('pt-BR')}<br>${item.departure&&item.arrival?`${item.departure} → ${item.arrival}`:''}${item.stops===0?' • voo direto':` • ${item.stops} escala(s)`}${item.duration?` • ${minutesLabel(item.duration)}`:''}<br><a href="${flightBookingUrl(trip,item)}" style="display:inline-block;margin-top:10px;padding:10px 14px;background:#0057b8;color:white;text-decoration:none;border-radius:8px">Reservar esta passagem</a></div>`).join('');
   const pointsHtml=pointsOffer?`<p><b>Referência pública Azul:</b> ${Number(pointsOffer.points).toLocaleString('pt-BR')} pontos por pessoa. <a href="${AZUL_POINTS_URL}">Consultar na Azul</a>.</p>`:(trip.program==='azul'?'<p><b>Azul Fidelidade:</b> não foi encontrada emissão pública confirmada para esta rota e data.</p>':'');
   const hotelLink=hotelBookingUrl(trip);
-  const subject=`✈️ ${trip.program==='azul'?'Azul priorizada — ':''}${decision.title}: ${trip.origin} → ${trip.destination}`;
-  const html=`<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#102235"><h2>Alerta Viagem PRO</h2><p><b>Análise da IA:</b> ${decision.reason}</p><h3>${trip.origin} → ${trip.destination}</h3>${pointsHtml}${suggestionsHtml}${saving?`<p>Economia de R$ ${saving.toLocaleString('pt-BR')}.</p>`:'<p>Primeiro preço real registrado.</p>'}<p><a href="${hotelLink}" style="display:inline-block;padding:10px 14px;background:#0b7a53;color:white;text-decoration:none;border-radius:8px">Pesquisar e reservar hotel</a></p><p><b>Recomendação:</b> ${decision.title}.</p><small>Conhecimento ${KNOWLEDGE_VERSION}. Os preços podem mudar ao abrir o fornecedor; confirme antes de pagar.</small></div>`;
+  const subject=`✈️ Atualização de viagem: ${trip.origin} → ${trip.destination}`;
+  const html=`<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#102235"><h2>Alerta Viagem PRO</h2><p><b>Atualização automática das últimas 3 horas.</b></p><p><b>Análise da IA:</b> ${decision.reason}</p><h3>${trip.origin} → ${trip.destination}</h3>${pointsHtml}${suggestionsHtml}${saving?`<p>Economia de R$ ${saving.toLocaleString('pt-BR')}.</p>`:'<p>Este é o melhor valor encontrado nesta verificação.</p>'}<p><a href="${hotelLink}" style="display:inline-block;padding:10px 14px;background:#0b7a53;color:white;text-decoration:none;border-radius:8px">Pesquisar e reservar hotel</a></p><p><b>Recomendação:</b> ${decision.title}.</p><small>Conhecimento ${KNOWLEDGE_VERSION}. Os preços podem mudar ao abrir o fornecedor; confirme antes de pagar.</small></div>`;
   const sent=await resend.emails.send({from:ALERT_FROM,to:ALERT_EMAIL,subject,html});
   if(sent?.error)throw new Error(sent.error.message||'Resend recusou o envio do alerta.');
 }
@@ -98,7 +94,7 @@ module.exports=async function handler(req,res){
             azulFound+=result.suggestions.filter(x=>x.azul).length;
             const decision=analyze({trip,cashPrice:result.price,oldBest:oldPrice,flightData:result.data,pointsOffer});
             trip.lastCheckedAt=new Date().toISOString();trip.lastError=null;trip.lastSuggestion=result.suggestions[0]||null;trip.lastDecision=decision;trip.lastPointsReference=pointsOffer;trip.azulOptionsFound=result.suggestions.filter(x=>x.azul).length;
-            if(result.price){if(shouldEmail(trip,result.price,now,decision)&&resend&&['email','both'].includes(trip.channel)){await sendAlert(resend,trip,result,oldPrice,decision,pointsOffer);trip.lastAlertAt=new Date().toISOString();alerts++}if(!oldPrice||result.price<oldPrice)trip.bestPrice=result.price}
+            if(result.price){if(shouldEmail(trip,result.price,now)&&resend&&['email','both'].includes(trip.channel)){await sendAlert(resend,trip,result,oldPrice,decision,pointsOffer);trip.lastAlertAt=new Date().toISOString();alerts++}if(!oldPrice||result.price<oldPrice)trip.bestPrice=result.price}
           }catch(error){trip.lastCheckedAt=new Date().toISOString();trip.lastError=error.message||'Erro durante a consulta';errors++}
         }
         await put(pathname,JSON.stringify({...document,trips,knowledgeVersion:KNOWLEDGE_VERSION,updatedAt:new Date().toISOString()}),{access:'private',addRandomSuffix:false,allowOverwrite:true,contentType:'application/json',cacheControlMaxAge:0});
