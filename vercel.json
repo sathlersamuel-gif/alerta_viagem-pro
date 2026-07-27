@@ -5,6 +5,12 @@
     "api/monitor-trips.js": { "maxDuration": 30 },
     "api/managed-trips.js": { "maxDuration": 30 }
   },
+  "crons": [
+    {
+      "path": "/api/monitor-trips",
+      "schedule": "0 */3 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
