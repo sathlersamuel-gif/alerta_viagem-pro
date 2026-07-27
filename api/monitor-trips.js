@@ -1,4 +1,4 @@
-const { list, put } = require('@vercel/blob');
+const { list, get, put } = require('@vercel/blob');
 const { Resend } = require('resend');
 const { analyze, KNOWLEDGE_VERSION } = require('../lib/travel-agent-knowledge');
 
@@ -47,7 +47,7 @@ async function findPublicAzulPoints(trip) {
     if(!response.ok)return null; const text=plainText(await response.text());
     const pattern=/([A-Za-zÀ-ÿ .'-]+)\s*\(([A-Z]{3})\)\s*(?:Para)?\s*([A-Za-zÀ-ÿ .'-]+)\s*\(([A-Z]{3})\)\s*(?:Só ida|Ida e volta)?\s*Ida:\s*(\d{2}\/\d{2}\/\d{4})[\s\S]{0,80}?A partir de\s*([\d.,]+)\s*pontos/gi;
     let match; const candidates=[];
-    while((match=pattern.exec(text))!==null){const[,,,originName,destination,dateBr,pointsRaw]=match;const[day,month,year]=dateBr.split('/');const date=`${year}-${month}-${day}`;const origin=match[2],dest=match[4];if(origin===trip.origin&&dest===trip.destination&&date===trip.departure)candidates.push(Number(pointsRaw.replace(/[^\d]/g,'')))}
+    while((match=pattern.exec(text))!==null){const dateBr=match[5],pointsRaw=match[6];const[day,month,year]=dateBr.split('/');const date=`${year}-${month}-${day}`;const origin=match[2],dest=match[4];if(origin===trip.origin&&dest===trip.destination&&date===trip.departure)candidates.push(Number(pointsRaw.replace(/[^\d]/g,'')))}
     const points=candidates.filter(Boolean).sort((a,b)=>a-b)[0]; return points?{points,exactInventory:false,source:'Azul Fidelidade',sourceUrl:AZUL_POINTS_URL}:null;
   } catch{return null}
 }
@@ -60,10 +60,49 @@ async function sendAlert(resend,trip,result,oldPrice,decision,pointsOffer){
   const html=`<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#102235"><h2>Alerta Viagem PRO</h2><p><b>Análise da IA:</b> ${decision.reason}</p><h3>${trip.origin} → ${trip.destination}</h3>${pointsHtml}${suggestionsHtml}${saving?`<p>Economia de R$ ${saving.toLocaleString('pt-BR')}.</p>`:'<p>Primeiro preço real registrado.</p>'}<p><b>Recomendação:</b> ${decision.title}.</p><small>Conhecimento ${KNOWLEDGE_VERSION}. Confirme preços e disponibilidade antes da compra.</small></div>`;
   await resend.emails.send({from:ALERT_FROM,to:ALERT_EMAIL,subject,html});
 }
+async function streamToJson(stream) {
+  const reader = stream.getReader();
+  const chunks = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(Buffer.from(value));
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
 module.exports=async function handler(req,res){
   if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Método não permitido.'});
   if(process.env.CRON_SECRET&&req.headers.authorization!==`Bearer ${process.env.CRON_SECRET}`)return res.status(401).json({error:'Não autorizado.'});
   const missing=[];if(!process.env.BLOB_READ_WRITE_TOKEN)missing.push('BLOB_READ_WRITE_TOKEN');if(!process.env.SERPAPI_API_KEY)missing.push('SERPAPI_API_KEY');if(missing.length)return res.status(200).json({ok:false,configured:false,skipped:true,missing,message:'Monitoramento aguardando configuração.'});
   const resend=process.env.RESEND_API_KEY?new Resend(process.env.RESEND_API_KEY):null;const now=Date.now();let checked=0,alerts=0,errors=0,azulFound=0;
-  try{let cursor;do{const page=await list({prefix:'monitoring/',limit:100,cursor});cursor=page.cursor;for(const blob of page.blobs){const response=await fetch(blob.url,{cache:'no-store'}),document=await response.json(),trips=Array.isArray(document.trips)?document.trips:[];for(const trip of trips){if(!trip.active)continue;checked++;try{if(!/^[A-Z]{3}$/.test(trip.origin)||!/^[A-Z]{3}$/.test(trip.destination))throw new Error('Código IATA inválido.');const oldPrice=Number(trip.bestPrice)||null;const[result,pointsOffer]=await Promise.all([searchTrip(trip),findPublicAzulPoints(trip)]);azulFound+=result.suggestions.filter(x=>x.azul).length;const decision=analyze({trip,cashPrice:result.price,oldBest:oldPrice,flightData:result.data,pointsOffer});trip.lastCheckedAt=new Date().toISOString();trip.lastError=null;trip.lastSuggestion=result.suggestions[0]||null;trip.lastDecision=decision;trip.lastPointsReference=pointsOffer;trip.azulOptionsFound=result.suggestions.filter(x=>x.azul).length;if(result.price){if(shouldEmail(trip,result.price,now,decision)&&resend&&['email','both'].includes(trip.channel)){await sendAlert(resend,trip,result,oldPrice,decision,pointsOffer);trip.lastAlertAt=new Date().toISOString();alerts++}if(!oldPrice||result.price<oldPrice)trip.bestPrice=result.price}}catch(error){trip.lastCheckedAt=new Date().toISOString();trip.lastError=error.message||'Erro durante a consulta';errors++}}await put(new URL(blob.url).pathname.replace(/^\//,''),JSON.stringify({...document,trips,knowledgeVersion:KNOWLEDGE_VERSION,updatedAt:new Date().toISOString()}),{access:'public',addRandomSuffix:false,allowOverwrite:true,contentType:'application/json',cacheControlMaxAge:0})}}while(cursor);return res.status(200).json({ok:true,configured:true,checked,alerts,errors,azulFound,emailEnabled:Boolean(resend),agentMode:true,knowledgeVersion:KNOWLEDGE_VERSION})}catch(error){console.error('Monitor trips error:',error);return res.status(500).json({error:'Falha ao executar o monitoramento automático.'})}
+  try{
+    let cursor;
+    do{
+      const page=await list({prefix:'monitoring/',limit:100,cursor});
+      cursor=page.cursor;
+      for(const blob of page.blobs){
+        const pathname=blob.pathname || new URL(blob.url).pathname.replace(/^\//,'');
+        const stored=await get(pathname,{access:'private'});
+        if(!stored||stored.statusCode!==200||!stored.stream)continue;
+        const document=await streamToJson(stored.stream);
+        const trips=Array.isArray(document.trips)?document.trips:[];
+        for(const trip of trips){
+          if(!trip.active)continue;
+          checked++;
+          try{
+            if(!/^[A-Z]{3}$/.test(trip.origin)||!/^[A-Z]{3}$/.test(trip.destination))throw new Error('Código IATA inválido.');
+            const oldPrice=Number(trip.bestPrice)||null;
+            const[result,pointsOffer]=await Promise.all([searchTrip(trip),findPublicAzulPoints(trip)]);
+            azulFound+=result.suggestions.filter(x=>x.azul).length;
+            const decision=analyze({trip,cashPrice:result.price,oldBest:oldPrice,flightData:result.data,pointsOffer});
+            trip.lastCheckedAt=new Date().toISOString();trip.lastError=null;trip.lastSuggestion=result.suggestions[0]||null;trip.lastDecision=decision;trip.lastPointsReference=pointsOffer;trip.azulOptionsFound=result.suggestions.filter(x=>x.azul).length;
+            if(result.price){if(shouldEmail(trip,result.price,now,decision)&&resend&&['email','both'].includes(trip.channel)){await sendAlert(resend,trip,result,oldPrice,decision,pointsOffer);trip.lastAlertAt=new Date().toISOString();alerts++}if(!oldPrice||result.price<oldPrice)trip.bestPrice=result.price}
+          }catch(error){trip.lastCheckedAt=new Date().toISOString();trip.lastError=error.message||'Erro durante a consulta';errors++}
+        }
+        await put(pathname,JSON.stringify({...document,trips,knowledgeVersion:KNOWLEDGE_VERSION,updatedAt:new Date().toISOString()}),{access:'private',addRandomSuffix:false,allowOverwrite:true,contentType:'application/json',cacheControlMaxAge:0});
+      }
+    }while(cursor);
+    return res.status(200).json({ok:true,configured:true,checked,alerts,errors,azulFound,emailEnabled:Boolean(resend),agentMode:true,knowledgeVersion:KNOWLEDGE_VERSION});
+  }catch(error){console.error('Monitor trips error:',error);return res.status(500).json({ok:false,error:'Falha ao executar o monitoramento automático.',detail:error?.message||'Erro desconhecido'});
+  }
 };
