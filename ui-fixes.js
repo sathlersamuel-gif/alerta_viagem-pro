@@ -57,6 +57,43 @@
     });
   }
 
+  function moveAnyDestinationOption() {
+    const checkbox = document.querySelector('#anyDestination');
+    const form = document.querySelector('#searchForm');
+    const actions = form?.querySelector('.actions');
+    const label = checkbox?.closest('label');
+    if (!checkbox || !form || !actions || !label || label.dataset.moved === '1') return;
+
+    const section = document.createElement('div');
+    section.className = 'avp-any-destination-section';
+    section.innerHTML = '<div class="small" style="margin-bottom:8px;font-weight:800;color:#c4d6e4">Busca alternativa</div>';
+    label.dataset.moved = '1';
+    label.classList.remove('full');
+    section.appendChild(label);
+    form.insertBefore(section, actions);
+
+    if (!document.querySelector('#avp-any-destination-style')) {
+      const style = document.createElement('style');
+      style.id = 'avp-any-destination-style';
+      style.textContent = `
+        .avp-any-destination-section {
+          margin-top: 16px;
+          padding: 14px;
+          border: 1px solid var(--line);
+          border-radius: 14px;
+          background: var(--panel2);
+          position: relative;
+          z-index: 1;
+        }
+        .avp-any-destination-section .checkbox-line {
+          margin: 0;
+          background: #10283d;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
   function installAutocompleteTouchFix() {
     if (!document.querySelector('#avp-autocomplete-touch-fix')) {
       const style = document.createElement('style');
@@ -107,6 +144,7 @@
   }
 
   activateDeals();
+  moveAnyDestinationOption();
   installAutocompleteTouchFix();
   const list = document.querySelector('#dealList');
   if (list) new MutationObserver(activateDeals).observe(list, {childList:true});
