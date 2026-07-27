@@ -1,5 +1,6 @@
 {
   "buildCommand": "node scripts/move-any-destination.cjs",
+  "outputDirectory": ".",
   "functions": {
     "api/flights.js": { "maxDuration": 30 },
     "api/flight-booking.js": { "maxDuration": 30 },
