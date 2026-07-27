@@ -1,0 +1,22 @@
+name: Monitorar viagens a cada 3 horas
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  monitorar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Acionar monitoramento do Alerta Viagem PRO
+        run: |
+          set -euo pipefail
+          response=$(curl --fail-with-body --silent --show-error --max-time 120 \
+            "https://alerta-viagem-pro.vercel.app/api/monitor-trips")
+          echo "$response"
+          echo "$response" | grep -q '"ok":true'
