@@ -8,11 +8,11 @@ if (html.includes('id="homePromotions"')) {
   process.exit(0);
 }
 
-const dashboardEnd = '</section><section class="view" id="search">';
 const panel = `<div class="card avp-promotions-card"><div class="avp-promotions-head"><div><span class="tag">ATUALIZAÇÃO AUTOMÁTICA</span><h2 class="section-title">Promoções encontradas</h2><div class="small" id="promotionsUpdated">Atualizadas a cada 3 horas.</div></div><button type="button" class="secondary" data-go="search">Nova busca</button></div><div id="homePromotions"><div class="empty">Carregando promoções monitoradas...</div></div></div>`;
 
-if (!html.includes(dashboardEnd)) throw new Error('Fim do painel inicial não encontrado.');
-html = html.replace(dashboardEnd, panel + dashboardEnd);
+const dashboardPattern = /(<section class="view active" id="dashboard">[\s\S]*?)(<\/section>\s*<section class="view" id="search">)/;
+if (!dashboardPattern.test(html)) throw new Error('Fim do painel inicial não encontrado.');
+html = html.replace(dashboardPattern, `$1${panel}$2`);
 
 const css = `<style id="avp-home-promotions-style">
 .avp-promotions-card{margin-top:13px}.avp-promotions-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.avp-promotions-head .section-title{margin:4px 0}.avp-promotions-grid{display:grid;grid-template-columns:1fr;gap:10px}.avp-promo{display:block;text-decoration:none;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px}.avp-promo.best{border-color:var(--green);box-shadow:0 0 0 1px #31d69b33}.avp-promo-route{font-size:18px;font-weight:900;margin:5px 0}.avp-promo-price{font-size:24px;font-weight:950;margin:8px 0}.avp-promo-meta{display:grid;gap:4px;color:var(--muted);font-size:12px}.avp-promo-badge{display:inline-block;font-size:10px;font-weight:900;letter-spacing:.08em;color:#56d7ff}.avp-promo-badge.azul{color:#70d8ff}@media(min-width:700px){.avp-promotions-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(min-width:1000px){.avp-promotions-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
