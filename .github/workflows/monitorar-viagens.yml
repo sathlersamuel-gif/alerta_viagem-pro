@@ -1,0 +1,89 @@
+name: Monitorar viagens
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monitorar-viagens
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verificar configuração de e-mail
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            --retry 3 --retry-delay 10 --retry-all-errors \
+            --connect-timeout 20 --max-time 60 \
+            "https://alerta-viagem-pro.vercel.app/api/email-health" \
+            -o email-health.json
+          cat email-health.json
+          python - <<'PY'
+          import json, sys
+          with open('email-health.json', encoding='utf-8') as f:
+              data = json.load(f)
+          if not data.get('configured'):
+              print('::error::RESEND_API_KEY não está configurada na Vercel.')
+              sys.exit(1)
+          PY
+
+      - name: Consultar viagens monitoradas
+        run: |
+          set -euo pipefail
+          HTTP_STATUS=$(curl \
+            --silent \
+            --show-error \
+            --location \
+            --retry 3 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --max-time 120 \
+            --output response.json \
+            --write-out "%{http_code}" \
+            "https://alerta-viagem-pro.vercel.app/api/monitor-trips")
+
+          cat response.json || true
+          echo
+          echo "HTTP status: $HTTP_STATUS"
+
+          python - "$HTTP_STATUS" <<'PY'
+          import json, sys
+          status = int(sys.argv[1])
+          with open('response.json', encoding='utf-8') as f:
+              body = json.load(f)
+          ok = bool(body.get('ok')) and 200 <= status < 300
+          if not ok:
+              print(f"::error::Monitoramento falhou: {body}")
+              sys.exit(1)
+          if not body.get('skipped') and not body.get('summarySent'):
+              print(f"::error::A execução terminou sem confirmar o envio do relatório: {body}")
+              sys.exit(1)
+          print('Monitoramento concluído com sucesso.')
+          print(json.dumps(body, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Resumo da execução
+        if: always()
+        run: |
+          {
+            echo '## Alerta Viagem PRO'
+            echo
+            echo '### Configuração de e-mail'
+            echo '```json'
+            cat email-health.json 2>/dev/null || true
+            echo '```'
+            echo
+            echo '### Monitoramento'
+            echo '```json'
+            cat response.json 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
