@@ -1,12 +1,13 @@
 {
-  "checkedAt": "2026-07-27T15:17:13.760750+00:00",
+  "checkedAt": "2026-07-27T22:03:20.409299+00:00",
   "httpStatus": 200,
   "ok": true,
   "configured": true,
-  "checked": 3,
+  "checked": 0,
   "alerts": 0,
-  "errors": 2,
+  "errors": 0,
   "emailEnabled": false,
+  "skipped": true,
   "missing": [],
-  "message": "Execução concluída."
+  "message": "Monitor já executado nas últimas 3 horas."
 }
