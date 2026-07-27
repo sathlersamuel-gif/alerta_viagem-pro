@@ -1,11 +1,12 @@
 {
-  "buildCommand": "node scripts/move-any-destination.cjs",
+  "buildCommand": "node scripts/move-any-destination.cjs && node scripts/upgrade-date-range.cjs",
   "outputDirectory": ".",
   "functions": {
     "api/flights.js": { "maxDuration": 30 },
     "api/flight-booking.js": { "maxDuration": 30 },
     "api/monitor-trips.js": { "maxDuration": 30 },
-    "api/managed-trips.js": { "maxDuration": 30 }
+    "api/managed-trips.js": { "maxDuration": 30 },
+    "api/available-dates.js": { "maxDuration": 30 }
   },
   "headers": [
     {
