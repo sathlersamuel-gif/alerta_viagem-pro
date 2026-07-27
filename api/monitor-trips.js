@@ -6,6 +6,8 @@ const ALERT_EMAIL = process.env.ALERT_EMAIL || 'sathlersamuel@gmail.com';
 const ALERT_FROM = process.env.ALERT_FROM || 'Alerta Viagem PRO <onboarding@resend.dev>';
 const APP_URL = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL || 'alerta-viagem-pro.vercel.app'}`;
 const AZUL_POINTS_URL = 'https://passagens.voeazul.com.br/pt/pontos';
+const RUN_STATE_PATH = 'monitoring/system-last-run.json';
+const MIN_RUN_INTERVAL = 2.75 * 60 * 60 * 1000;
 const isAzulFlight = item => (item?.flights || []).some(leg => /azul/i.test(String(leg?.airline || '')));
 
 function allFlights(data, trip) {
@@ -25,7 +27,7 @@ function shouldEmail(trip, price, now) {
   if (!price) return false;
   if (!trip.lastAlertAt) return true;
   const elapsed = now - new Date(trip.lastAlertAt).getTime();
-  return elapsed >= 2.75 * 60 * 60 * 1000;
+  return elapsed >= MIN_RUN_INTERVAL;
 }
 async function searchTrip(trip) {
   const params = new URLSearchParams({ engine:'google_flights', api_key:process.env.SERPAPI_API_KEY, hl:'pt', gl:'br', currency:'BRL', type:trip.return?'1':'2', departure_id:trip.origin, arrival_id:trip.destination, outbound_date:trip.departure, adults:String(trip.adults||1), children:String(trip.children||0), sort_by:'2' });
@@ -73,17 +75,30 @@ async function streamToJson(stream) {
   while (true) { const { done, value } = await reader.read(); if (done) break; chunks.push(Buffer.from(value)); }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
+async function canRun(now) {
+  try {
+    const stored = await get(RUN_STATE_PATH,{access:'private'});
+    if(stored?.statusCode===200&&stored.stream){
+      const state=await streamToJson(stored.stream);
+      if(state.lastRunAt&&now-new Date(state.lastRunAt).getTime()<MIN_RUN_INTERVAL)return false;
+    }
+  } catch {}
+  await put(RUN_STATE_PATH,JSON.stringify({lastRunAt:new Date(now).toISOString()}),{access:'private',addRandomSuffix:false,allowOverwrite:true,contentType:'application/json',cacheControlMaxAge:0});
+  return true;
+}
 module.exports=async function handler(req,res){
   if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Método não permitido.'});
-  if(process.env.CRON_SECRET&&req.headers.authorization!==`Bearer ${process.env.CRON_SECRET}`)return res.status(401).json({error:'Não autorizado.'});
+  if(req.method==='POST'&&process.env.CRON_SECRET&&req.headers.authorization!==`Bearer ${process.env.CRON_SECRET}`)return res.status(401).json({error:'Não autorizado.'});
   const missing=[];if(!process.env.BLOB_READ_WRITE_TOKEN)missing.push('BLOB_READ_WRITE_TOKEN');if(!process.env.SERPAPI_API_KEY)missing.push('SERPAPI_API_KEY');if(missing.length)return res.status(200).json({ok:false,configured:false,skipped:true,missing,message:'Monitoramento aguardando configuração.'});
   const resend=process.env.RESEND_API_KEY?new Resend(process.env.RESEND_API_KEY):null;const now=Date.now();let checked=0,alerts=0,errors=0,azulFound=0;
   try{
+    if(!(await canRun(now)))return res.status(200).json({ok:true,skipped:true,message:'Monitor já executado nas últimas 3 horas.'});
     let cursor;
     do{
       const page=await list({prefix:'monitoring/',limit:100,cursor}); cursor=page.cursor;
       for(const blob of page.blobs){
         const pathname=blob.pathname || new URL(blob.url).pathname.replace(/^\//,'');
+        if(pathname===RUN_STATE_PATH)continue;
         const stored=await get(pathname,{access:'private'}); if(!stored||stored.statusCode!==200||!stored.stream)continue;
         const document=await streamToJson(stored.stream); const trips=Array.isArray(document.trips)?document.trips:[];
         for(const trip of trips){
