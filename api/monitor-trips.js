@@ -99,6 +99,18 @@ async function sendFallbackAlert(resend,trip,deals){
   const sent=await resend.emails.send({from:ALERT_FROM,to:ALERT_EMAIL,subject,html});
   if(sent?.error)throw new Error(sent.error.message||'Resend recusou o envio das oportunidades alternativas.');
 }
+function passengerLabel(trip){
+  const adults=Number(trip.adults)||1,children=Number(trip.children)||0;
+  const ages=Array.isArray(trip.childAges)&&trip.childAges.length?` (${trip.childAges.join(', ')} anos)`:'';
+  return `${adults} adulto(s)${children?` + ${children} criança(s)${ages}`:''}`;
+}
+async function sendRunSummary(resend, summaries, runAt){
+  const rows=summaries.length?summaries.map(item=>`<div style="padding:12px 14px;margin:10px 0;border:1px solid #d7e6f5;border-radius:12px"><b>${item.origin} ⇄ ${item.destination}</b><br>Ida: ${item.departure}${item.return?` • Volta: ${item.return}`:' • sem volta cadastrada'}<br>${item.passengers}<br>Preferência: ${item.preference} • Programa: ${item.program}<br>${item.error?`⚠️ ${item.error}`:item.price?`Melhor valor encontrado: <b>R$ ${Number(item.price).toLocaleString('pt-BR')}</b> • ${item.airline||'companhia não informada'}${item.azul?' • Azul':''}`:'Nenhum preço disponível nesta verificação.'}${item.points?`<br>Referência Azul: ${Number(item.points).toLocaleString('pt-BR')} pontos por pessoa.`:''}</div>`).join(''):'<p>Nenhuma preferência de viagem ativa foi encontrada. Abra o aplicativo e ative ao menos um monitoramento.</p>';
+  const subject=`🕒 Relatório obrigatório de 3 horas — Alerta Viagem PRO`;
+  const html=`<div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#102235"><h2>Busca automática concluída</h2><p>O sistema executou a verificação programada em ${new Date(runAt).toLocaleString('pt-BR',{timeZone:'America/Porto_Velho'})} e leu as preferências salvas no aplicativo.</p>${rows}<p><b>Este relatório é enviado mesmo quando não há promoção</b>, para confirmar que o monitoramento continua funcionando.</p><small>Os preços podem mudar ao abrir o fornecedor. Confirme o valor total de ida e volta antes de pagar.</small></div>`;
+  const sent=await resend.emails.send({from:ALERT_FROM,to:ALERT_EMAIL,subject,html});
+  if(sent?.error)throw new Error(sent.error.message||'Resend recusou o relatório obrigatório.');
+}
 async function streamToJson(stream) {
   const reader = stream.getReader(); const chunks = [];
   while (true) { const { done, value } = await reader.read(); if (done) break; chunks.push(Buffer.from(value)); }
@@ -120,7 +132,7 @@ module.exports=async function handler(req,res){
   if(req.method==='POST'&&process.env.CRON_SECRET&&req.headers.authorization!==`Bearer ${process.env.CRON_SECRET}`)return res.status(401).json({error:'Não autorizado.'});
   const missing=[];if(!process.env.BLOB_READ_WRITE_TOKEN)missing.push('BLOB_READ_WRITE_TOKEN');if(!process.env.SERPAPI_API_KEY)missing.push('SERPAPI_API_KEY');
   if(missing.length)return res.status(200).json({ok:false,configured:false,skipped:true,missing,message:'Monitoramento aguardando configuração.'});
-  const resend=process.env.RESEND_API_KEY?new Resend(process.env.RESEND_API_KEY):null;const now=Date.now();let checked=0,alerts=0,fallbackAlerts=0,errors=0,azulFound=0,activeTrips=0,emailTrips=0;
+  const resend=process.env.RESEND_API_KEY?new Resend(process.env.RESEND_API_KEY):null;const now=Date.now();let checked=0,alerts=0,fallbackAlerts=0,errors=0,azulFound=0,activeTrips=0,emailTrips=0,summarySent=false;const summaries=[];
   try{
     if(!(await canRun(now)))return res.status(200).json({ok:true,skipped:true,message:'Monitor já executado nas últimas 3 horas.'});
     let cursor;
@@ -140,6 +152,7 @@ module.exports=async function handler(req,res){
             azulFound+=result.suggestions.filter(x=>x.azul).length;
             const decision=analyze({trip,cashPrice:result.price,oldBest:oldPrice,flightData:result.data,pointsOffer});
             trip.lastCheckedAt=new Date().toISOString();trip.lastError=null;trip.lastSuggestion=result.suggestions[0]||null;trip.lastDecision=decision;trip.lastPointsReference=pointsOffer;trip.azulOptionsFound=result.suggestions.filter(x=>x.azul).length;
+            summaries.push({origin:trip.origin,destination:trip.destination,departure:trip.departure,return:trip.return,passengers:passengerLabel(trip),preference:trip.preference,program:trip.program,price:result.price,airline:result.suggestions[0]?.airline||'',azul:Boolean(result.suggestions[0]?.azul),points:pointsOffer?.points||null,error:null});
             let sentExact=false;
             if(result.price){
               if(shouldEmail(trip,result.price,now)&&resend&&['email','both'].includes(trip.channel)){await sendAlert(resend,trip,result,oldPrice,decision,pointsOffer);trip.lastAlertAt=new Date().toISOString();alerts++;sentExact=true}
@@ -149,11 +162,12 @@ module.exports=async function handler(req,res){
               const deals=await searchFallbackDeals(trip);
               if(deals.length){await sendFallbackAlert(resend,trip,deals);trip.lastFallbackAlertAt=new Date().toISOString();trip.lastFallbackDeals=deals;fallbackAlerts++}
             }
-          }catch(error){trip.lastCheckedAt=new Date().toISOString();trip.lastError=error.message||'Erro durante a consulta';errors++}
+          }catch(error){trip.lastCheckedAt=new Date().toISOString();trip.lastError=error.message||'Erro durante a consulta';errors++;summaries.push({origin:trip.origin,destination:trip.destination,departure:trip.departure,return:trip.return,passengers:passengerLabel(trip),preference:trip.preference,program:trip.program,price:null,points:null,error:trip.lastError})}
         }
         await put(pathname,JSON.stringify({...document,trips,knowledgeVersion:KNOWLEDGE_VERSION,updatedAt:new Date().toISOString()}),{access:'private',addRandomSuffix:false,allowOverwrite:true,contentType:'application/json',cacheControlMaxAge:0});
       }
     }while(cursor);
-    return res.status(200).json({ok:true,configured:true,checked,activeTrips,emailTrips,alerts,fallbackAlerts,errors,azulFound,emailEnabled:Boolean(resend),emailConfiguration:resend?'ativa':'RESEND_API_KEY ausente',agentMode:true,knowledgeVersion:KNOWLEDGE_VERSION});
+    if(resend){await sendRunSummary(resend,summaries,now);summarySent=true}
+    return res.status(200).json({ok:true,configured:true,checked,activeTrips,emailTrips,alerts,fallbackAlerts,summarySent,errors,azulFound,emailEnabled:Boolean(resend),emailConfiguration:resend?'ativa':'RESEND_API_KEY ausente',agentMode:true,knowledgeVersion:KNOWLEDGE_VERSION});
   }catch(error){console.error('Monitor trips error:',error);return res.status(500).json({ok:false,error:'Falha ao executar o monitoramento automático.',detail:error?.message||'Erro desconhecido'});}
 };
