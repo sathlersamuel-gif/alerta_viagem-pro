@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: monitorar-viagens
@@ -17,8 +17,36 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Baixar repositório
-        uses: actions/checkout@v4
+      - name: Verificar configuração do e-mail
+        run: |
+          set -euo pipefail
+          EMAIL_STATUS=$(curl \
+            --silent \
+            --show-error \
+            --location \
+            --retry 3 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --max-time 120 \
+            --output email-health.json \
+            --write-out "%{http_code}" \
+            "https://alerta-viagem-pro.vercel.app/api/email-health")
+
+          cat email-health.json || true
+          echo
+          echo "HTTP e-mail: $EMAIL_STATUS"
+
+          python - "$EMAIL_STATUS" <<'PY'
+          import json, sys
+          status = int(sys.argv[1])
+          with open('email-health.json', encoding='utf-8') as f:
+              body = json.load(f)
+          if not (200 <= status < 300 and body.get('configured') is True):
+              print('::error::O serviço de e-mail não confirmou a RESEND_API_KEY ativa na Vercel.')
+              raise SystemExit(1)
+          print('E-mail configurado para:', body.get('recipientMasked', 'destinatário configurado'))
+          PY
 
       - name: Consultar viagens monitoradas
         run: |
@@ -38,51 +66,23 @@ jobs:
 
           cat response.json || true
           echo
-          echo "HTTP status: $HTTP_STATUS"
+          echo "HTTP monitor: $HTTP_STATUS"
 
           python - "$HTTP_STATUS" <<'PY'
           import json, sys
-          from datetime import datetime, timezone
-
           status = int(sys.argv[1])
-          try:
-              with open('response.json', encoding='utf-8') as f:
-                  body = json.load(f)
-          except Exception as exc:
-              body = {'ok': False, 'error': f'Resposta inválida: {exc}'}
+          with open('response.json', encoding='utf-8') as f:
+              body = json.load(f)
 
-          diagnostic = {
-              'checkedAt': datetime.now(timezone.utc).isoformat(),
-              'httpStatus': status,
-              'ok': bool(body.get('ok')) and 200 <= status < 300,
-              'configured': body.get('configured', True),
-              'checked': body.get('checked', 0),
-              'alerts': body.get('alerts', 0),
-              'errors': body.get('errors', 0),
-              'emailEnabled': body.get('emailEnabled', False),
-              'skipped': body.get('skipped', False),
-              'missing': body.get('missing', []),
-              'message': body.get('message') or body.get('error') or 'Execução concluída.'
-          }
-          with open('monitor-status.json', 'w', encoding='utf-8') as f:
-              json.dump(diagnostic, f, ensure_ascii=False, indent=2)
-
-          if not diagnostic['ok']:
+          if not (200 <= status < 300 and body.get('ok') is True):
               print('::error::Monitoramento não confirmou execução bem-sucedida.')
-              sys.exit(1)
-          PY
+              raise SystemExit(1)
 
-      - name: Salvar diagnóstico
-        if: always()
-        run: |
-          if [ ! -f monitor-status.json ]; then
-            printf '{"ok":false,"message":"A execução terminou antes de gerar diagnóstico."}\n' > monitor-status.json
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add monitor-status.json
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m "Atualiza diagnóstico do monitoramento [skip ci]"
-          git push
+          if body.get('skipped'):
+              print('Monitor já havia executado dentro do intervalo de 3 horas. Isso não indica falha de e-mail.')
+          elif body.get('summarySent') is not True:
+              print('::error::A execução ocorreu, mas o relatório obrigatório não foi confirmado como enviado.')
+              raise SystemExit(1)
+          else:
+              print('Relatório obrigatório enviado com sucesso.')
+          PY
