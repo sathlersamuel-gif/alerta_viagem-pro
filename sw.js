@@ -1,4 +1,4 @@
-const CACHE = 'alerta-viagem-pro-v14';
+const CACHE = 'alerta-viagem-pro-v15';
 const APP_SHELL = [
   './',
   './index.html',
@@ -6,7 +6,7 @@ const APP_SHELL = [
   './app.js?v=2',
   './international-airports.js?v=2',
   './fixes.js?v=5',
-  './ui-fixes.js?v=2',
+  './ui-fixes.js?v=3',
   './travelers.js?v=5',
   './points-balance.js?v=2',
   './featured-offers.js?v=8',
