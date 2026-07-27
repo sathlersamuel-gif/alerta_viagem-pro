@@ -60,34 +60,50 @@
   function moveAnyDestinationOption() {
     const checkbox = document.querySelector('#anyDestination');
     const form = document.querySelector('#searchForm');
-    const actions = form?.querySelector('.actions');
     const label = checkbox?.closest('label');
-    if (!checkbox || !form || !actions || !label || label.dataset.moved === '1') return;
+    if (!checkbox || !form || !label) return;
 
-    const section = document.createElement('div');
-    section.className = 'avp-any-destination-section';
-    section.innerHTML = '<div class="small" style="margin-bottom:8px;font-weight:800;color:#c4d6e4">Busca alternativa</div>';
-    label.dataset.moved = '1';
-    label.classList.remove('full');
-    section.appendChild(label);
-    form.insertBefore(section, actions);
+    let section = document.querySelector('#avp-any-destination-section');
+    if (!section) {
+      section = document.createElement('div');
+      section.id = 'avp-any-destination-section';
+      section.className = 'avp-any-destination-section';
+      section.innerHTML = '<div class="small" style="margin-bottom:8px;font-weight:800;color:#c4d6e4">Busca alternativa</div>';
+    }
+
+    if (!section.contains(label)) {
+      label.classList.remove('full');
+      section.appendChild(label);
+    }
+
+    const searchButton = document.querySelector('#searchButton');
+    const buttonContainer = searchButton?.parentElement;
+    if (buttonContainer && buttonContainer.parentElement === form) {
+      form.insertBefore(section, buttonContainer);
+    } else if (searchButton && searchButton.parentElement) {
+      searchButton.parentElement.insertBefore(section, searchButton);
+    } else {
+      form.appendChild(section);
+    }
 
     if (!document.querySelector('#avp-any-destination-style')) {
       const style = document.createElement('style');
       style.id = 'avp-any-destination-style';
       style.textContent = `
         .avp-any-destination-section {
-          margin-top: 16px;
+          margin-top: 22px;
+          margin-bottom: 14px;
           padding: 14px;
           border: 1px solid var(--line);
           border-radius: 14px;
           background: var(--panel2);
           position: relative;
           z-index: 1;
+          clear: both;
         }
-        .avp-any-destination-section .checkbox-line {
-          margin: 0;
-          background: #10283d;
+        .avp-any-destination-section label {
+          margin: 0 !important;
+          width: 100%;
         }
       `;
       document.head.appendChild(style);
@@ -143,9 +159,21 @@
     document.addEventListener('click', protectSuggestionTouch, true);
   }
 
-  activateDeals();
-  moveAnyDestinationOption();
-  installAutocompleteTouchFix();
+  function initializeFixes() {
+    activateDeals();
+    moveAnyDestinationOption();
+    installAutocompleteTouchFix();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeFixes, {once:true});
+  } else {
+    initializeFixes();
+  }
+
+  setTimeout(moveAnyDestinationOption, 300);
+  setTimeout(moveAnyDestinationOption, 1000);
+
   const list = document.querySelector('#dealList');
   if (list) new MutationObserver(activateDeals).observe(list, {childList:true});
 })();
