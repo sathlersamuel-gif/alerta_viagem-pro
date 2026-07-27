@@ -8,7 +8,7 @@ function validCode(value) {
   return /^[A-Z]{3}$/.test(String(value || '').toUpperCase());
 }
 
-async function searchOne({ origin, destination, departure, returnDate, adults, children }) {
+async function searchOne({ origin, destination, departure, returnDate, adults, children, offset }) {
   const params = new URLSearchParams({
     engine: 'google_flights',
     api_key: process.env.SERPAPI_API_KEY,
@@ -37,6 +37,8 @@ async function searchOne({ origin, destination, departure, returnDate, adults, c
   return {
     departure,
     returnDate,
+    offset,
+    selectedDates: offset === 0,
     price: Number(flights[0].price),
     airline: (flights[0].flights || []).map(x => x.airline).filter(Boolean).join(' + ')
   };
@@ -59,7 +61,7 @@ module.exports = async function handler(req, res) {
   }
 
   const stayDays = Math.max(1, Math.round((new Date(`${returnDate}T12:00:00Z`) - new Date(`${departure}T12:00:00Z`)) / 86400000));
-  const offsets = [-3, -2, -1, 1, 2, 3];
+  const offsets = [-7, -5, -3, -2, -1, 0, 1, 2, 3, 5, 7];
 
   const results = await Promise.allSettled(offsets.map(offset => {
     const dep = shift(departure, offset);
@@ -69,15 +71,29 @@ module.exports = async function handler(req, res) {
       departure: dep,
       returnDate: shift(dep, stayDays),
       adults,
-      children
+      children,
+      offset
     });
   }));
 
-  const options = results
+  const available = results
     .filter(item => item.status === 'fulfilled' && item.value)
     .map(item => item.value)
-    .sort((a, b) => a.price - b.price)
-    .slice(0, 5);
+    .sort((a, b) => a.price - b.price);
 
-  return res.status(200).json({ configured: true, options });
+  const selected = available.find(item => item.selectedDates) || null;
+  const cheapest = available[0] || null;
+  const options = available.slice(0, 6).map(item => ({
+    ...item,
+    saving: selected && item.price < selected.price ? selected.price - item.price : 0,
+    recommended: Boolean(cheapest && item.departure === cheapest.departure && item.returnDate === cheapest.returnDate)
+  }));
+
+  return res.status(200).json({
+    configured: true,
+    selectedAvailable: Boolean(selected),
+    selectedPrice: selected?.price || null,
+    cheapest,
+    options
+  });
 };
