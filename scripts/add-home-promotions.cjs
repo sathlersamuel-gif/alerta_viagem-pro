@@ -22,3 +22,4 @@ const js = `<script id="avp-home-promotions-script">(()=>{const money=v=>Number(
 html = html.replace('</head>', css + '</head>').replace('</body>', js + '</body>');
 fs.writeFileSync(path, html, 'utf8');
 console.log('Informações completas adicionadas aos cards da tela inicial.');
+require('./fix-search-audit.cjs');
