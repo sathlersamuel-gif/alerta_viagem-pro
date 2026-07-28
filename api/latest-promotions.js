@@ -18,19 +18,31 @@ function bookingUrl(trip, suggestion, destination = trip.destination) {
   const returning = String(trip.return || '');
   const adults = Math.max(1, Number(trip.adults) || 1);
   const children = Math.max(0, Number(trip.children) || 0);
-
   const passengerText = `${adults} adult${adults === 1 ? '' : 's'}${children ? ` and ${children} child${children === 1 ? '' : 'ren'}` : ''}`;
   const query = returning
     ? `Flights from ${origin} to ${arrival} departing ${departure} returning ${returning} for ${passengerText}`
     : `One way flights from ${origin} to ${arrival} departing ${departure} for ${passengerText}`;
-
-  const params = new URLSearchParams({
-    q: query,
-    hl: 'pt-BR',
-    curr: 'BRL'
-  });
-
+  const params = new URLSearchParams({ q: query, hl: 'pt-BR', curr: 'BRL' });
   return `https://www.google.com/travel/flights?${params.toString()}`;
+}
+
+function addPromotion(promotions, trip, suggestion, type = 'saved', destination = trip.destination, checkedAt = null) {
+  if (!suggestion?.price) return;
+  promotions.push({
+    type,
+    origin: trip.origin,
+    destination,
+    departure: trip.departure,
+    returnDate: trip.return || '',
+    adults: trip.adults || 1,
+    children: trip.children || 0,
+    price: Number(suggestion.price),
+    airline: suggestion.airline || 'Companhia não informada',
+    stops: Number(suggestion.stops) || 0,
+    azul: Boolean(suggestion.azul),
+    checkedAt,
+    link: bookingUrl(trip, suggestion, destination)
+  });
 }
 
 module.exports = async function handler(req, res) {
@@ -56,42 +68,15 @@ module.exports = async function handler(req, res) {
 
         for (const trip of Array.isArray(document.trips) ? document.trips : []) {
           if (!trip.active) continue;
-          const suggestion = trip.lastSuggestion;
-          if (suggestion?.price) {
-            promotions.push({
-              type: 'saved',
-              origin: trip.origin,
-              destination: trip.destination,
-              departure: trip.departure,
-              returnDate: trip.return || '',
-              adults: trip.adults || 1,
-              children: trip.children || 0,
-              price: Number(suggestion.price),
-              airline: suggestion.airline || 'Companhia não informada',
-              stops: Number(suggestion.stops) || 0,
-              azul: Boolean(suggestion.azul),
-              checkedAt: trip.lastCheckedAt || document.updatedAt || null,
-              link: bookingUrl(trip, suggestion)
-            });
-          }
+          const checkedAt = trip.lastCheckedAt || document.updatedAt || null;
+          const suggestions = Array.isArray(trip.lastSuggestions) && trip.lastSuggestions.length
+            ? trip.lastSuggestions
+            : [trip.lastSuggestion].filter(Boolean);
+
+          suggestions.slice(0, 6).forEach(suggestion => addPromotion(promotions, trip, suggestion, 'saved', trip.destination, checkedAt));
 
           for (const alternative of Array.isArray(trip.lastFallbackDeals) ? trip.lastFallbackDeals : []) {
-            if (!alternative?.price) continue;
-            promotions.push({
-              type: 'alternative',
-              origin: trip.origin,
-              destination: alternative.destination,
-              departure: trip.departure,
-              returnDate: trip.return || '',
-              adults: trip.adults || 1,
-              children: trip.children || 0,
-              price: Number(alternative.price),
-              airline: alternative.airline || 'Companhia não informada',
-              stops: Number(alternative.stops) || 0,
-              azul: Boolean(alternative.azul),
-              checkedAt: trip.lastFallbackAlertAt || trip.lastCheckedAt || document.updatedAt || null,
-              link: bookingUrl(trip, alternative, alternative.destination)
-            });
+            addPromotion(promotions, trip, alternative, 'alternative', alternative.destination, trip.lastFallbackAlertAt || checkedAt);
           }
         }
       }
@@ -101,7 +86,7 @@ module.exports = async function handler(req, res) {
     promotions
       .sort((a, b) => a.price - b.price)
       .forEach(item => {
-        const key = `${item.origin}-${item.destination}-${item.departure}-${item.returnDate}`;
+        const key = `${item.origin}-${item.destination}-${item.departure}-${item.returnDate}-${item.airline}-${item.price}-${item.stops}`;
         if (!unique.has(key)) unique.set(key, item);
       });
 
@@ -111,7 +96,7 @@ module.exports = async function handler(req, res) {
       configured: true,
       updatedAt,
       refreshHours: 3,
-      promotions: [...unique.values()].slice(0, 12)
+      promotions: [...unique.values()].slice(0, 30)
     });
   } catch (error) {
     console.error('Latest promotions error:', error);
