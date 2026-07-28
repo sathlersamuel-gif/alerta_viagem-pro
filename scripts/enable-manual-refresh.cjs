@@ -27,8 +27,8 @@ source = source.replace(
 
 if (!/const force\s*=\s*req\.method\s*===\s*'GET'/.test(source)) {
   source = source.replace(
-    /const resend=process\.env\.RESEND_API_KEY\?new Resend\(process\.env\.RESEND_API_KEY\):null;const now=Date\.now\(\);/,
-    "const resend=process.env.RESEND_API_KEY?new Resend(process.env.RESEND_API_KEY):null;const now=Date.now();const force=req.method==='GET'&&String(req.query?.force||'')==='1';"
+    /(const resend=[^;]+;const now=Date\.now\(\);)/,
+    "$1const force=req.method==='GET'&&String(req.query?.force||'')==='1';"
   );
 }
 
@@ -38,8 +38,8 @@ source = source.replace(
 );
 
 source = source.replace(
-  "return res.status(200).json({ok:true,configured:true,checked,activeTrips,emailTrips,alerts,fallbackAlerts,summarySent,errors,azulFound,emailEnabled:Boolean(resend),",
-  "return res.status(200).json({ok:true,configured:true,manual:force,checked,activeTrips,emailTrips,alerts,fallbackAlerts,summarySent,errors,azulFound,emailEnabled:Boolean(resend),"
+  "return res.status(200).json({ok:true,configured:true,checked,activeTrips,emailTrips,alerts,fallbackAlerts,summarySent,errors,azulFound,emailEnabled:",
+  "return res.status(200).json({ok:true,configured:true,manual:force,checked,activeTrips,emailTrips,alerts,fallbackAlerts,summarySent,errors,azulFound,emailEnabled:"
 );
 
 const hasDeclaration = /const force\s*=\s*req\.method\s*===\s*'GET'/.test(source);
