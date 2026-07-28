@@ -3,13 +3,24 @@ const { Resend } = require('resend');
 const ALERT_EMAIL = process.env.ALERT_EMAIL || 'sathlersamuel@gmail.com';
 const ALERT_FROM = process.env.ALERT_FROM || 'Alerta Viagem PRO <onboarding@resend.dev>';
 
+function compactDate(value) {
+  return String(value || '').replaceAll('-', '').slice(2);
+}
+
 function flightUrl(origin, destination, departure, returning) {
-  const q = new URLSearchParams({
-    q: `Voos de ${origin} para ${destination} ida em ${departure} volta em ${returning} para 1 adulto`,
-    hl: 'pt-BR',
-    curr: 'BRL'
+  const outbound = compactDate(departure);
+  const inbound = compactDate(returning);
+  const path = inbound
+    ? `${origin.toLowerCase()}/${destination.toLowerCase()}/${outbound}/${inbound}`
+    : `${origin.toLowerCase()}/${destination.toLowerCase()}/${outbound}`;
+  const query = new URLSearchParams({
+    adultsv2: '1',
+    cabinclass: 'economy',
+    currency: 'BRL',
+    locale: 'pt-BR',
+    market: 'BR'
   });
-  return `https://www.google.com/travel/flights?${q.toString()}`;
+  return `https://www.skyscanner.com.br/transport/flights/${path}/?${query.toString()}`;
 }
 
 function hotelUrl(destination, checkin, checkout) {
