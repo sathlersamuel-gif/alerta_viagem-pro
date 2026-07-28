@@ -42,6 +42,43 @@ source = source.replace(
   "return res.status(200).json({ok:true,configured:true,manual:force,checked,activeTrips,emailTrips,alerts,fallbackAlerts,summarySent,errors,azulFound,emailEnabled:"
 );
 
+source = source.replace(
+  "const FALLBACK_DESTINATIONS = ['BSB', 'GRU', 'GIG', 'CNF', 'SSA', 'REC', 'FOR', 'MCZ', 'NAT', 'FLN'];",
+  "const FALLBACK_DESTINATIONS = ['BSB','GRU','CGH','GIG','SDU','CNF','SSA','REC','FOR','MCZ','NAT','JPA','CWB','FLN','IGU','POA','BEL','MAO','CGB','PVH','JPR','OAL','BVH','EZE','AEP','SCL','LIM','MVD','ASU','CUN','MIA','MCO','FLL','LIS','OPO','MAD','BCN'];"
+);
+
+source = source.replace(
+  /function fallbackTargets\(trip\) \{[\s\S]*?\n\}/,
+`function fallbackTargets(trip) {
+  const rotation = Math.floor(Date.now() / (60 * 60 * 1000));
+  const score = code => [...code].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return FALLBACK_DESTINATIONS
+    .filter(code => code !== trip.origin && code !== trip.destination)
+    .sort((a, b) => ((score(a) + rotation * 7) % 97) - ((score(b) + rotation * 7) % 97))
+    .slice(0, 8);
+}`
+);
+
+source = source.replace(
+  'trip.lastCheckedAt=new Date().toISOString();trip.lastError=null;trip.lastSuggestion=result.suggestions[0]||null;trip.lastDecision=decision;',
+  'trip.lastCheckedAt=new Date().toISOString();trip.lastError=null;trip.lastSuggestion=result.suggestions[0]||null;trip.lastSuggestions=result.suggestions;trip.currentPrice=result.price||null;trip.lastDecision=decision;'
+);
+
+source = source.replace(
+`            if(!sentExact&&['email','both'].includes(trip.channel)&&trip.agentSuggestions!==false&&shouldSendFallback(trip,now)){
+              const deals=await searchFallbackDeals(trip);
+              if(deals.length){await sendFallbackAlert(resend,trip,deals);trip.lastFallbackAlertAt=new Date().toISOString();trip.lastFallbackDeals=deals;fallbackAlerts++}
+            }`,
+`            if(trip.agentSuggestions!==false){
+              const deals=await searchFallbackDeals(trip);
+              trip.lastFallbackDeals=deals;
+              trip.lastFallbackCheckedAt=new Date().toISOString();
+              if(!sentExact&&['email','both'].includes(trip.channel)&&deals.length&&shouldSendFallback(trip,now)){
+                await sendFallbackAlert(resend,trip,deals);trip.lastFallbackAlertAt=new Date().toISOString();fallbackAlerts++
+              }
+            }`
+);
+
 const hasDeclaration = /const force\s*=\s*req\.method\s*===\s*'GET'/.test(source);
 const hasCanRunParameter = /async function canRun\(now, force = false\)/.test(source);
 const hasCanRunCall = /canRun\(now,force\)/.test(source);
@@ -51,4 +88,4 @@ if (!hasDeclaration || !hasCanRunParameter || !hasCanRunCall) {
 }
 
 fs.writeFileSync(path, source, 'utf8');
-console.log('Atualização manual validada: variável force definida corretamente.');
+console.log('Atualização manual validada: novos destinos, preços e promoções alternativas renovados.');
