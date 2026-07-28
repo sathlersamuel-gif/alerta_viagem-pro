@@ -6,8 +6,10 @@ let source = fs.readFileSync(path, 'utf8');
 if (!source.includes('const MANUAL_RUN_INTERVAL')) {
   source = source.replace(
     'const FALLBACK_INTERVAL = 20 * 60 * 60 * 1000;',
-    'const FALLBACK_INTERVAL = 20 * 60 * 60 * 1000;\nconst MANUAL_RUN_INTERVAL = 5 * 60 * 1000;'
+    'const FALLBACK_INTERVAL = 20 * 60 * 60 * 1000;\nconst MANUAL_RUN_INTERVAL = 60 * 1000;'
   );
+} else {
+  source = source.replace(/const MANUAL_RUN_INTERVAL\s*=\s*[^;]+;/, 'const MANUAL_RUN_INTERVAL = 60 * 1000;');
 }
 
 source = source.replace(
@@ -34,7 +36,7 @@ if (!/const force\s*=\s*req\.method\s*===\s*'GET'/.test(source)) {
 
 source = source.replace(
   /if\(!\(await canRun\(now(?:,force)?\)\)\)return res\.status\(200\)\.json\(\{ok:true,skipped:true,[^}]*\}\);/,
-  "if(!(await canRun(now,force)))return res.status(200).json({ok:true,skipped:true,manual:force,message:force?'Atualização manual disponível novamente em alguns minutos.':'Monitor já executado nas últimas 3 horas.'});"
+  "if(!(await canRun(now,force)))return res.status(200).json({ok:true,skipped:true,manual:force,message:force?'Aguarde 1 minuto para pesquisar novamente.':'Monitor já executado nas últimas 3 horas.'});"
 );
 
 source = source.replace(
@@ -43,7 +45,7 @@ source = source.replace(
 );
 
 source = source.replace(
-  "const FALLBACK_DESTINATIONS = ['BSB', 'GRU', 'GIG', 'CNF', 'SSA', 'REC', 'FOR', 'MCZ', 'NAT', 'FLN'];",
+  /const FALLBACK_DESTINATIONS = \[[^\]]+\];/,
   "const FALLBACK_DESTINATIONS = ['BSB','GRU','CGH','GIG','SDU','CNF','SSA','REC','FOR','MCZ','NAT','JPA','CWB','FLN','IGU','POA','BEL','MAO','CGB','PVH','JPR','OAL','BVH','EZE','AEP','SCL','LIM','MVD','ASU','CUN','MIA','MCO','FLL','LIS','OPO','MAD','BCN'];"
 );
 
@@ -65,27 +67,27 @@ source = source.replace(
 );
 
 source = source.replace(
-`            if(!sentExact&&['email','both'].includes(trip.channel)&&trip.agentSuggestions!==false&&shouldSendFallback(trip,now)){
-              const deals=await searchFallbackDeals(trip);
-              if(deals.length){await sendFallbackAlert(resend,trip,deals);trip.lastFallbackAlertAt=new Date().toISOString();trip.lastFallbackDeals=deals;fallbackAlerts++}
-            }`,
-`            if(trip.agentSuggestions!==false){
+  /\s*if\(!sentExact&&resend&&\['email','both'\]\.includes\(trip\.channel\)&&trip\.agentSuggestions!==false&&shouldSendFallback\(trip,now\)\)\{[\s\S]*?\n\s*\}/,
+`\n            if(trip.agentSuggestions!==false){
               const deals=await searchFallbackDeals(trip);
               trip.lastFallbackDeals=deals;
               trip.lastFallbackCheckedAt=new Date().toISOString();
-              if(!sentExact&&['email','both'].includes(trip.channel)&&deals.length&&shouldSendFallback(trip,now)){
-                await sendFallbackAlert(resend,trip,deals);trip.lastFallbackAlertAt=new Date().toISOString();fallbackAlerts++
+              if(!sentExact&&resend&&['email','both'].includes(trip.channel)&&deals.length&&shouldSendFallback(trip,now)){
+                await sendFallbackAlert(resend,trip,deals);trip.lastFallbackAlertAt=new Date().toISOString();fallbackAlerts++;
               }
             }`
 );
 
-const hasDeclaration = /const force\s*=\s*req\.method\s*===\s*'GET'/.test(source);
-const hasCanRunParameter = /async function canRun\(now, force = false\)/.test(source);
-const hasCanRunCall = /canRun\(now,force\)/.test(source);
-
-if (!hasDeclaration || !hasCanRunParameter || !hasCanRunCall) {
-  throw new Error('Falha ao validar a atualização manual: a variável force não foi definida corretamente.');
+const checks = [
+  /async function canRun\(now, force = false\)/,
+  /canRun\(now,force\)/,
+  /trip\.lastFallbackDeals=deals/,
+  /slice\(0, 8\)/,
+  /const MANUAL_RUN_INTERVAL = 60 \* 1000;/
+];
+if (checks.some(pattern => !pattern.test(source))) {
+  throw new Error('Falha ao validar a atualização manual e a renovação das promoções.');
 }
 
 fs.writeFileSync(path, source, 'utf8');
-console.log('Atualização manual validada: novos destinos, preços e promoções alternativas renovados.');
+console.log('Atualização manual real ativada: pesquisa principal e destinos alternativos renovados.');
