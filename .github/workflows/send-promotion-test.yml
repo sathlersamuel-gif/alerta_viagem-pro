@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'api/email-health.js'
+      - 'vercel.json'
       - '.github/workflows/send-promotion-test.yml'
   workflow_dispatch:
 
