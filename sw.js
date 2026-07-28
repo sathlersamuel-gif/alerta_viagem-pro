@@ -1,4 +1,4 @@
-const CACHE = 'alerta-viagem-pro-v15';
+const CACHE = 'alerta-viagem-pro-v16';
 const APP_SHELL = [
   './',
   './index.html',
