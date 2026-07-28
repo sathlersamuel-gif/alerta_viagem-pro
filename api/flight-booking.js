@@ -153,14 +153,13 @@ module.exports = async function handler(req, res) {
       params.set('deep_search', 'true');
       const returnData = await serpSearch(params, apiKey);
       bookingToken = allFlights(returnData).find(item => item.booking_token)?.booking_token || '';
-      params.delete('departure_token');
-      params.delete('sort_by');
-      params.delete('deep_search');
     }
 
     if (!bookingToken) throw new Error('A companhia não forneceu um link direto para este itinerário.');
-    params.set('booking_token', bookingToken);
-    const bookingData = await serpSearch(params, apiKey);
+
+    // A consulta de booking_token deve ser feita isoladamente. Reenviar rota e datas
+    // faz o Google Flights rejeitar tokens válidos com "has not returned any results".
+    const bookingData = await serpSearch(new URLSearchParams({ booking_token: bookingToken }), apiKey);
     const choice = chooseBookingRequest(bookingData, requestedAirline, targetPrice);
     if (!choice) throw new Error('Esta tarifa não possui link direto de companhia ou agência. Escolha outra oferta disponível.');
 
