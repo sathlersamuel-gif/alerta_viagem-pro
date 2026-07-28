@@ -4,8 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'api/send-promotion-test.js'
-      - 'vercel.json'
+      - 'api/email-health.js'
       - '.github/workflows/send-promotion-test.yml'
   workflow_dispatch:
 
@@ -34,7 +33,7 @@ jobs:
             --max-time 90 \
             --output response.json \
             --write-out "%{http_code}" \
-            "https://alerta-viagem-pro.vercel.app/api/send-promotion-test?token=avp-email-test-2026")
+            "https://alerta-viagem-pro.vercel.app/api/email-health?promotionTest=1&token=avp-email-test-2026")
 
           cat response.json || true
           echo
