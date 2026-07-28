@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node scripts/move-any-destination.cjs && node scripts/upgrade-date-range.cjs && node scripts/harden-email-monitor.cjs && node scripts/store-all-flight-suggestions.cjs && node scripts/enable-manual-refresh.cjs && node scripts/add-home-promotions.cjs",
+  "buildCommand": "node scripts/move-any-destination.cjs && node scripts/upgrade-date-range.cjs && node scripts/harden-email-monitor.cjs && node scripts/store-all-flight-suggestions.cjs && node scripts/enable-manual-refresh.cjs && node scripts/add-home-promotions.cjs && node scripts/audit-best-prices.cjs",
   "outputDirectory": ".",
   "functions": {
     "api/flights.js": { "maxDuration": 30 },
