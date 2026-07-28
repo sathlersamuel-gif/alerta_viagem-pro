@@ -24,4 +24,17 @@ source = source.replace(
 );
 
 fs.writeFileSync(monitorPath, source, 'utf8');
-console.log('Tratamento de limite da fonte aplicado ao monitor.');
+
+const indexPath = 'index.html';
+let html = fs.readFileSync(indexPath, 'utf8');
+html = html.replace(
+  "if(label)label.textContent='Última atualização: '+updated(data.updatedAt)+' • Brasil e exterior.';const national=",
+  "if(data.providerQuotaExhausted){if(label)label.textContent='Fonte de pesquisa sem consultas disponíveis.';box.innerHTML='<div class=\"notice warning\"><b>Busca temporariamente indisponível.</b><br>A conta da fonte de preços atingiu o limite de consultas. As ofertas antigas foram ocultadas para não parecerem atualizadas.</div>';return}if(label)label.textContent='Última atualização: '+updated(data.updatedAt)+' • Brasil e exterior.';const national="
+);
+html = html.replace(
+  "await loadPromotions();if(status)status.textContent=data.skipped?data.message:'Busca concluída no Brasil e no exterior. '+(data.checked||0)+' viagem(ns) monitorada(s).';",
+  "await loadPromotions();if(status)status.textContent=data.providerQuotaExhausted?data.message:(data.skipped?data.message:'Busca concluída no Brasil e no exterior. '+(data.checked||0)+' viagem(ns) monitorada(s).');"
+);
+fs.writeFileSync(indexPath, html, 'utf8');
+
+console.log('Tratamento de limite aplicado ao monitor, e-mail e tela inicial.');
