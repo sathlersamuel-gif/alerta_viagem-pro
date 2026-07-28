@@ -41,12 +41,12 @@ const js = `<script id="avp-home-promotions-script">
  async function refreshNow(){
   const button=document.getElementById('refreshPromotions'),status=document.getElementById('promotionRefreshStatus');
   if(!button)return;
-  button.disabled=true;button.textContent='Buscando...';if(status)status.textContent='Pesquisando novas ofertas e verificando alertas por e-mail...';
+  button.disabled=true;button.textContent='Buscando...';if(status)status.textContent='Pesquisando novas ofertas...';
   try{
-   const r=await fetch('/api/monitor-trips?force=1&ts='+Date.now(),{cache:'no-store'}),data=await r.json();
-   if(!r.ok||data.ok!==true)throw new Error(data.detail||data.error||data.message||'Falha na atualização.');
+   const r=await fetch('/api/refresh-promotions?ts='+Date.now(),{cache:'no-store'}),data=await r.json();
+   if(!r.ok||data.ok!==true)throw new Error(data.detail||data.error||'Falha na atualização.');
    await loadPromotions();
-   if(status)status.textContent=data.skipped?data.message:'Busca concluída. '+(data.checked||0)+' viagem(ns) verificada(s) e '+(data.alerts||0)+' alerta(s) enviado(s).';
+   if(status)status.textContent='Busca concluída. '+(data.checked||0)+' viagem(ns) verificada(s), '+(data.updated||0)+' com ofertas atualizadas.';
   }catch(error){if(status)status.textContent='Não foi possível atualizar: '+error.message}
   finally{button.disabled=false;button.textContent='Atualizar agora'}
  }
