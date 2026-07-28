@@ -46,7 +46,7 @@ source = source.replace(
 
 source = source.replace(
   /const FALLBACK_DESTINATIONS = \[[^\]]+\];(?:\nconst INTERNATIONAL_DESTINATIONS = new Set\(\[[^\]]+\]\);)?/,
-  "const FALLBACK_DESTINATIONS = ['BSB','GRU','CGH','GIG','SDU','CNF','SSA','REC','FOR','MCZ','NAT','JPA','CWB','FLN','IGU','POA','BEL','MAO','CGB','PVH','JPR','OAL','BVH','EZE','AEP','SCL','LIM','MVD','ASU','BOG','CTG','PTY','CUN','PUJ','MEX','MIA','MCO','FLL','JFK','LAX','LIS','OPO','MAD','BCN','CDG','ORY','FCO','MXP','LHR','AMS'];\nconst INTERNATIONAL_DESTINATIONS = new Set(['EZE','AEP','SCL','LIM','MVD','ASU','BOG','CTG','PTY','CUN','PUJ','MEX','MIA','MCO','FLL','JFK','LAX','LIS','OPO','MAD','BCN','CDG','ORY','FCO','MXP','LHR','AMS']);"
+  "const FALLBACK_DESTINATIONS = ['BSB','GRU','GIG','CNF','SSA','REC','FOR','MCZ','NAT','JPA','CWB','FLN','IGU','POA','BEL','MAO','EZE','SCL','LIM','MVD','ASU','BOG','PTY','CUN','PUJ','MEX','MIA','MCO','LIS','MAD','BCN','CDG','FCO'];\nconst INTERNATIONAL_DESTINATIONS = new Set(['EZE','SCL','LIM','MVD','ASU','BOG','PTY','CUN','PUJ','MEX','MIA','MCO','LIS','MAD','BCN','CDG','FCO']);"
 );
 
 source = source.replace(
@@ -57,19 +57,48 @@ source = source.replace(
   const rotate = list => list
     .filter(code => code !== trip.origin && code !== trip.destination)
     .sort((a, b) => ((score(a) + rotation * 11) % 101) - ((score(b) + rotation * 11) % 101));
-  const national = rotate(FALLBACK_DESTINATIONS.filter(code => !INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 5);
-  const international = rotate(FALLBACK_DESTINATIONS.filter(code => INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 7);
+  const national = rotate(FALLBACK_DESTINATIONS.filter(code => !INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 4);
+  const international = rotate(FALLBACK_DESTINATIONS.filter(code => INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 6);
   return [...national, ...international];
 }`
 );
 
+if (!source.includes('function shiftDate(')) {
+  source = source.replace(
+    /async function searchFallbackDeals\(trip\) \{/,
+`function shiftDate(value, days) {
+  const date = new Date(value + 'T12:00:00Z');
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+function flexibleTrip(trip, index) {
+  const offsets = [0, -7, 7, -14, 14, 21, -21, 28, -28, 35];
+  const offset = offsets[index % offsets.length];
+  const stayDays = trip.return ? Math.max(2, Math.round((new Date(trip.return) - new Date(trip.departure)) / 86400000)) : 0;
+  const departure = shiftDate(trip.departure, offset);
+  const returning = trip.return ? shiftDate(departure, stayDays) : '';
+  return { ...trip, departure, return: returning };
+}
+async function searchFallbackDeals(trip) {`
+  );
+}
+
 source = source.replace(
   /async function searchFallbackDeals\(trip\) \{[\s\S]*?\n\}/,
 `async function searchFallbackDeals(trip) {
-  const results = await Promise.allSettled(fallbackTargets(trip).map(destination => searchTrip(trip, destination)));
+  const targets = fallbackTargets(trip);
+  const results = await Promise.allSettled(targets.map((destination, index) => {
+    const candidateTrip = flexibleTrip(trip, index + Math.floor(Date.now() / 60000));
+    return searchTrip(candidateTrip, destination).then(result => ({ ...result, candidateTrip }));
+  }));
   const deals = results
     .filter(item => item.status === 'fulfilled' && item.value.price)
-    .map(item => ({ destination:item.value.destination, ...item.value.suggestions[0] }));
+    .map(item => ({
+      destination:item.value.destination,
+      departureDate:item.value.candidateTrip.departure,
+      returnDate:item.value.candidateTrip.return || '',
+      ...item.value.suggestions[0]
+    }));
   const national = deals.filter(item => !INTERNATIONAL_DESTINATIONS.has(item.destination)).sort((a,b) => a.price-b.price).slice(0,4);
   const international = deals.filter(item => INTERNATIONAL_DESTINATIONS.has(item.destination)).sort((a,b) => a.price-b.price).slice(0,6);
   return [...national, ...international];
@@ -96,15 +125,15 @@ source = source.replace(
 const checks = [
   /async function canRun\(now, force = false\)/,
   /canRun\(now,force\)/,
-  /trip\.lastFallbackDeals=deals/,
+  /function flexibleTrip\(/,
+  /departureDate:/,
+  /returnDate:/,
   /INTERNATIONAL_DESTINATIONS/,
-  /slice\(0, 7\)/,
-  /const international = deals\.filter/,
   /const MANUAL_RUN_INTERVAL = 60 \* 1000;/
 ];
 if (checks.some(pattern => !pattern.test(source))) {
-  throw new Error('Falha ao validar a busca internacional ampliada.');
+  throw new Error('Falha ao validar a busca flexível nacional e internacional.');
 }
 
 fs.writeFileSync(path, source, 'utf8');
-console.log('Busca ampliada: 5 destinos nacionais e 7 internacionais, preservando resultados das duas categorias.');
+console.log('Busca flexível ativada com novos destinos e novas datas em cada atualização.');
