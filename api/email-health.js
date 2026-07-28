@@ -7,14 +7,15 @@ function compactDate(value) {
   return String(value || '').replaceAll('-', '').slice(2);
 }
 
-function flightUrl(origin, destination, departure, returning) {
+function flightUrl(origin, destination, departure, returning, adults = 1, children = 0) {
   const outbound = compactDate(departure);
   const inbound = compactDate(returning);
   const path = inbound
     ? `${origin.toLowerCase()}/${destination.toLowerCase()}/${outbound}/${inbound}`
     : `${origin.toLowerCase()}/${destination.toLowerCase()}/${outbound}`;
   const query = new URLSearchParams({
-    adultsv2: '1',
+    adultsv2: String(Math.max(1, adults)),
+    childrenv2: children ? Array.from({ length: children }, () => '10').join('|') : '',
     cabinclass: 'economy',
     currency: 'BRL',
     locale: 'pt-BR',
@@ -23,24 +24,31 @@ function flightUrl(origin, destination, departure, returning) {
   return `https://www.skyscanner.com.br/transport/flights/${path}/?${query.toString()}`;
 }
 
-function hotelUrl(destination, checkin, checkout) {
+function hotelUrl(destination, checkin, checkout, adults = 1, children = 0) {
   return `https://www.booking.com/searchresults.pt-br.html?${new URLSearchParams({
     ss: destination,
     checkin,
     checkout,
-    group_adults: '1',
-    group_children: '0',
+    group_adults: String(Math.max(1, adults)),
+    group_children: String(Math.max(0, children)),
     no_rooms: '1'
   }).toString()}`;
 }
 
+function passengerLabel(offer) {
+  const adults = Math.max(1, Number(offer.adults) || 1);
+  const children = Math.max(0, Number(offer.children) || 0);
+  const total = adults + children;
+  return `${total} passageiro${total === 1 ? '' : 's'} • ${adults} adulto${adults === 1 ? '' : 's'}${children ? ` • ${children} criança${children === 1 ? '' : 's'}` : ''}`;
+}
+
 function promotionTestHtml() {
   const offers = [
-    { origin: 'CGB', destination: 'SSA', departure: '2026-11-05', returning: '2026-11-13', airline: 'Azul', price: 6709 },
-    { origin: 'PVH', destination: 'GRU', departure: '2026-10-08', returning: '2026-10-15', airline: 'LATAM', price: 2489 },
-    { origin: 'CGB', destination: 'REC', departure: '2026-09-12', returning: '2026-09-20', airline: 'Azul', price: 3198 }
+    { origin: 'CGB', destination: 'SSA', departure: '2026-11-05', returning: '2026-11-13', airline: 'Azul', price: 6709, adults: 2, children: 1 },
+    { origin: 'PVH', destination: 'GRU', departure: '2026-10-08', returning: '2026-10-15', airline: 'LATAM', price: 2489, adults: 1, children: 0 },
+    { origin: 'CGB', destination: 'REC', departure: '2026-09-12', returning: '2026-09-20', airline: 'Azul', price: 3198, adults: 2, children: 1 }
   ];
-  const cards = offers.map((o, i) => `<div style="border:1px solid #d7e6f5;border-radius:14px;padding:16px;margin:14px 0"><div style="font-size:12px;font-weight:800;color:#087cff">${i === 0 ? 'OFERTA EM DESTAQUE' : 'PROMOÇÃO DE TESTE'}</div><h3 style="margin:8px 0">${o.origin} → ${o.destination}</h3><div style="font-size:24px;font-weight:900">R$ ${o.price.toLocaleString('pt-BR')}</div><p>${o.airline}<br>Ida: ${o.departure} • Volta: ${o.returning}</p><a href="${flightUrl(o.origin,o.destination,o.departure,o.returning)}" style="display:inline-block;padding:11px 15px;background:#0057b8;color:#fff;text-decoration:none;border-radius:9px;margin-right:8px">Ver passagem aérea</a><a href="${hotelUrl(o.destination,o.departure,o.returning)}" style="display:inline-block;padding:11px 15px;background:#0b7a53;color:#fff;text-decoration:none;border-radius:9px;margin-top:8px">Ver hotéis</a></div>`).join('');
+  const cards = offers.map((o, i) => `<div style="border:1px solid #d7e6f5;border-radius:14px;padding:16px;margin:14px 0"><div style="font-size:12px;font-weight:800;color:#087cff">${i === 0 ? 'OFERTA EM DESTAQUE' : 'PROMOÇÃO DE TESTE'}</div><h3 style="margin:8px 0">${o.origin} → ${o.destination}</h3><div style="font-size:24px;font-weight:900">R$ ${o.price.toLocaleString('pt-BR')}</div><p><b>Valor total para ${passengerLabel(o)}</b><br>${o.airline}<br>Ida: ${o.departure} • Volta: ${o.returning}</p><a href="${flightUrl(o.origin,o.destination,o.departure,o.returning,o.adults,o.children)}" style="display:inline-block;padding:11px 15px;background:#0057b8;color:#fff;text-decoration:none;border-radius:9px;margin-right:8px">Ver passagem aérea</a><a href="${hotelUrl(o.destination,o.departure,o.returning,o.adults,o.children)}" style="display:inline-block;padding:11px 15px;background:#0b7a53;color:#fff;text-decoration:none;border-radius:9px;margin-top:8px">Ver hotéis</a></div>`).join('');
   return `<div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#102235"><h2>Alerta Viagem PRO</h2><p>Teste real do formato dos alertas com links de passagem e hotel.</p>${cards}<p><small>Valores apenas para testar o formato e os links.</small></p></div>`;
 }
 
