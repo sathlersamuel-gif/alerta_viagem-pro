@@ -45,8 +45,8 @@ source = source.replace(
 );
 
 source = source.replace(
-  /const FALLBACK_DESTINATIONS = \[[^\]]+\];/,
-  "const FALLBACK_DESTINATIONS = ['BSB','GRU','CGH','GIG','SDU','CNF','SSA','REC','FOR','MCZ','NAT','JPA','CWB','FLN','IGU','POA','BEL','MAO','CGB','PVH','JPR','OAL','BVH','EZE','AEP','SCL','LIM','MVD','ASU','CUN','MIA','MCO','FLL','LIS','OPO','MAD','BCN'];\nconst INTERNATIONAL_DESTINATIONS = new Set(['EZE','AEP','SCL','LIM','MVD','ASU','CUN','MIA','MCO','FLL','LIS','OPO','MAD','BCN']);"
+  /const FALLBACK_DESTINATIONS = \[[^\]]+\];(?:\nconst INTERNATIONAL_DESTINATIONS = new Set\(\[[^\]]+\]\);)?/,
+  "const FALLBACK_DESTINATIONS = ['BSB','GRU','CGH','GIG','SDU','CNF','SSA','REC','FOR','MCZ','NAT','JPA','CWB','FLN','IGU','POA','BEL','MAO','CGB','PVH','JPR','OAL','BVH','EZE','AEP','SCL','LIM','MVD','ASU','BOG','CTG','PTY','CUN','PUJ','MEX','MIA','MCO','FLL','JFK','LAX','LIS','OPO','MAD','BCN','CDG','ORY','FCO','MXP','LHR','AMS'];\nconst INTERNATIONAL_DESTINATIONS = new Set(['EZE','AEP','SCL','LIM','MVD','ASU','BOG','CTG','PTY','CUN','PUJ','MEX','MIA','MCO','FLL','JFK','LAX','LIS','OPO','MAD','BCN','CDG','ORY','FCO','MXP','LHR','AMS']);"
 );
 
 source = source.replace(
@@ -57,8 +57,21 @@ source = source.replace(
   const rotate = list => list
     .filter(code => code !== trip.origin && code !== trip.destination)
     .sort((a, b) => ((score(a) + rotation * 11) % 101) - ((score(b) + rotation * 11) % 101));
-  const national = rotate(FALLBACK_DESTINATIONS.filter(code => !INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 4);
-  const international = rotate(FALLBACK_DESTINATIONS.filter(code => INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 4);
+  const national = rotate(FALLBACK_DESTINATIONS.filter(code => !INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 5);
+  const international = rotate(FALLBACK_DESTINATIONS.filter(code => INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 7);
+  return [...national, ...international];
+}`
+);
+
+source = source.replace(
+  /async function searchFallbackDeals\(trip\) \{[\s\S]*?\n\}/,
+`async function searchFallbackDeals(trip) {
+  const results = await Promise.allSettled(fallbackTargets(trip).map(destination => searchTrip(trip, destination)));
+  const deals = results
+    .filter(item => item.status === 'fulfilled' && item.value.price)
+    .map(item => ({ destination:item.value.destination, ...item.value.suggestions[0] }));
+  const national = deals.filter(item => !INTERNATIONAL_DESTINATIONS.has(item.destination)).sort((a,b) => a.price-b.price).slice(0,4);
+  const international = deals.filter(item => INTERNATIONAL_DESTINATIONS.has(item.destination)).sort((a,b) => a.price-b.price).slice(0,6);
   return [...national, ...international];
 }`
 );
@@ -85,12 +98,13 @@ const checks = [
   /canRun\(now,force\)/,
   /trip\.lastFallbackDeals=deals/,
   /INTERNATIONAL_DESTINATIONS/,
-  /slice\(0, 4\)/,
+  /slice\(0, 7\)/,
+  /const international = deals\.filter/,
   /const MANUAL_RUN_INTERVAL = 60 \* 1000;/
 ];
 if (checks.some(pattern => !pattern.test(source))) {
-  throw new Error('Falha ao validar a busca nacional e internacional.');
+  throw new Error('Falha ao validar a busca internacional ampliada.');
 }
 
 fs.writeFileSync(path, source, 'utf8');
-console.log('Busca nacional e internacional ativada em cada atualização manual.');
+console.log('Busca ampliada: 5 destinos nacionais e 7 internacionais, preservando resultados das duas categorias.');
