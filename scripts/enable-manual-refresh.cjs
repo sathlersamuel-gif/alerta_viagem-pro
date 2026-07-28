@@ -46,7 +46,7 @@ source = source.replace(
 
 source = source.replace(
   /const FALLBACK_DESTINATIONS = \[[^\]]+\];(?:\nconst INTERNATIONAL_DESTINATIONS = new Set\(\[[^\]]+\]\);)?/,
-  "const FALLBACK_DESTINATIONS = ['BSB','GRU','GIG','CNF','SSA','REC','FOR','MCZ','NAT','JPA','CWB','FLN','IGU','POA','BEL','MAO','EZE','SCL','LIM','MVD','ASU','BOG','PTY','CUN','PUJ','MEX','MIA','MCO','LIS','MAD','BCN','CDG','FCO'];\nconst INTERNATIONAL_DESTINATIONS = new Set(['EZE','SCL','LIM','MVD','ASU','BOG','PTY','CUN','PUJ','MEX','MIA','MCO','LIS','MAD','BCN','CDG','FCO']);"
+  "const FALLBACK_DESTINATIONS = ['BSB','GRU','GIG','CNF','SSA','REC','FOR','MCZ','NAT','CWB','FLN','EZE','SCL','LIM','MVD','ASU','BOG','PTY','CUN','MIA','LIS','MAD'];\nconst INTERNATIONAL_DESTINATIONS = new Set(['EZE','SCL','LIM','MVD','ASU','BOG','PTY','CUN','MIA','LIS','MAD']);"
 );
 
 source = source.replace(
@@ -57,9 +57,10 @@ source = source.replace(
   const rotate = list => list
     .filter(code => code !== trip.origin && code !== trip.destination)
     .sort((a, b) => ((score(a) + rotation * 11) % 101) - ((score(b) + rotation * 11) % 101));
-  const national = rotate(FALLBACK_DESTINATIONS.filter(code => !INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 4);
-  const international = rotate(FALLBACK_DESTINATIONS.filter(code => INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 6);
-  return [...national, ...international];
+  const national = rotate(FALLBACK_DESTINATIONS.filter(code => !INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 3);
+  const internationalPriority = ['EZE','SCL','ASU','LIM','MVD','BOG','PTY','CUN','MIA','LIS','MAD'];
+  const international = rotate(internationalPriority).slice(0, 3);
+  return { national, international };
 }`
 );
 
@@ -72,7 +73,7 @@ if (!source.includes('function shiftDate(')) {
   return date.toISOString().slice(0, 10);
 }
 function flexibleTrip(trip, index) {
-  const offsets = [0, -7, 7, -14, 14, 21, -21, 28, -28, 35];
+  const offsets = [0, -7, 7, -14, 14, 21, 28, 35];
   const offset = offsets[index % offsets.length];
   const stayDays = trip.return ? Math.max(2, Math.round((new Date(trip.return) - new Date(trip.departure)) / 86400000)) : 0;
   const departure = shiftDate(trip.departure, offset);
@@ -87,21 +88,40 @@ source = source.replace(
   /async function searchFallbackDeals\(trip\) \{[\s\S]*?\n\}/,
 `async function searchFallbackDeals(trip) {
   const targets = fallbackTargets(trip);
-  const results = await Promise.allSettled(targets.map((destination, index) => {
-    const candidateTrip = flexibleTrip(trip, index + Math.floor(Date.now() / 60000));
-    return searchTrip(candidateTrip, destination).then(result => ({ ...result, candidateTrip }));
-  }));
-  const deals = results
-    .filter(item => item.status === 'fulfilled' && item.value.price)
-    .map(item => ({
-      destination:item.value.destination,
-      departureDate:item.value.candidateTrip.departure,
-      returnDate:item.value.candidateTrip.return || '',
-      ...item.value.suggestions[0]
+  const runGroup = async (destinations, category, startIndex) => {
+    const results = await Promise.allSettled(destinations.map((destination, index) => {
+      const candidateTrip = flexibleTrip(trip, startIndex + index + Math.floor(Date.now() / 60000));
+      return searchTrip(candidateTrip, destination).then(result => ({ ...result, candidateTrip, category }));
     }));
-  const national = deals.filter(item => !INTERNATIONAL_DESTINATIONS.has(item.destination)).sort((a,b) => a.price-b.price).slice(0,4);
-  const international = deals.filter(item => INTERNATIONAL_DESTINATIONS.has(item.destination)).sort((a,b) => a.price-b.price).slice(0,6);
-  return [...national, ...international];
+    return {
+      attempts: destinations.length,
+      successes: results.filter(item => item.status === 'fulfilled' && item.value.price).length,
+      failures: results.filter(item => item.status === 'rejected').map(item => String(item.reason?.message || item.reason || 'Falha')).slice(0, 3),
+      deals: results
+        .filter(item => item.status === 'fulfilled' && item.value.price)
+        .map(item => ({
+          destination:item.value.destination,
+          category:item.value.category,
+          departureDate:item.value.candidateTrip.departure,
+          returnDate:item.value.candidateTrip.return || '',
+          ...item.value.suggestions[0]
+        }))
+    };
+  };
+  const nationalResult = await runGroup(targets.national, 'national', 0);
+  const internationalResult = await runGroup(targets.international, 'international', 3);
+  const national = nationalResult.deals.sort((a,b) => a.price-b.price).slice(0,3);
+  const international = internationalResult.deals.sort((a,b) => a.price-b.price).slice(0,3);
+  return {
+    deals:[...national, ...international],
+    diagnostics:{
+      nationalAttempts:nationalResult.attempts,
+      nationalSuccesses:nationalResult.successes,
+      internationalAttempts:internationalResult.attempts,
+      internationalSuccesses:internationalResult.successes,
+      failures:[...nationalResult.failures, ...internationalResult.failures]
+    }
+  };
 }`
 );
 
@@ -113,9 +133,17 @@ source = source.replace(
 source = source.replace(
   /\s*if\(!sentExact&&resend&&\['email','both'\]\.includes\(trip\.channel\)&&trip\.agentSuggestions!==false&&shouldSendFallback\(trip,now\)\)\{[\s\S]*?\n\s*\}/,
 `\n            if(trip.agentSuggestions!==false){
-              const deals=await searchFallbackDeals(trip);
-              trip.lastFallbackDeals=deals;
+              const fallbackResult=await searchFallbackDeals(trip);
+              const deals=fallbackResult.deals;
+              trip.lastFallbackDiagnostics=fallbackResult.diagnostics;
               trip.lastFallbackCheckedAt=new Date().toISOString();
+              if(deals.length){
+                const previous=Array.isArray(trip.lastFallbackDeals)?trip.lastFallbackDeals:[];
+                const merged=[...deals,...previous];
+                const unique=new Map();
+                merged.forEach(item=>{const key=\`${'${item.destination}-${item.departureDate||trip.departure}-${item.returnDate||trip.return}-${item.airline}-${item.price}'}\`;if(!unique.has(key))unique.set(key,item)});
+                trip.lastFallbackDeals=[...unique.values()].slice(0,12);
+              }
               if(!sentExact&&resend&&['email','both'].includes(trip.channel)&&deals.length&&shouldSendFallback(trip,now)){
                 await sendFallbackAlert(resend,trip,deals);trip.lastFallbackAlertAt=new Date().toISOString();fallbackAlerts++;
               }
@@ -126,14 +154,13 @@ const checks = [
   /async function canRun\(now, force = false\)/,
   /canRun\(now,force\)/,
   /function flexibleTrip\(/,
-  /departureDate:/,
-  /returnDate:/,
-  /INTERNATIONAL_DESTINATIONS/,
+  /internationalSuccesses/,
+  /trip\.lastFallbackDiagnostics/,
   /const MANUAL_RUN_INTERVAL = 60 \* 1000;/
 ];
 if (checks.some(pattern => !pattern.test(source))) {
-  throw new Error('Falha ao validar a busca flexível nacional e internacional.');
+  throw new Error('Falha ao validar a busca promocional confiável.');
 }
 
 fs.writeFileSync(path, source, 'utf8');
-console.log('Busca flexível ativada com novos destinos e novas datas em cada atualização.');
+console.log('Busca promocional revisada: nacional e internacional em lotes menores, com diagnóstico e preservação de resultados.');
