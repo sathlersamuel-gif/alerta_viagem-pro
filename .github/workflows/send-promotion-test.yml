@@ -1,0 +1,51 @@
+name: Enviar teste de promoções
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/send-promotion-test.js'
+      - 'vercel.json'
+      - '.github/workflows/send-promotion-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Aguardar publicação na Vercel
+        run: sleep 90
+
+      - name: Enviar e-mail de teste
+        run: |
+          set -euo pipefail
+          STATUS=$(curl \
+            --silent \
+            --show-error \
+            --location \
+            --retry 3 \
+            --retry-delay 15 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --max-time 90 \
+            --output response.json \
+            --write-out "%{http_code}" \
+            "https://alerta-viagem-pro.vercel.app/api/send-promotion-test?token=avp-email-test-2026")
+
+          cat response.json || true
+          echo
+          echo "HTTP: $STATUS"
+
+          python - "$STATUS" <<'PY'
+          import json, sys
+          status = int(sys.argv[1])
+          with open('response.json', encoding='utf-8') as f:
+              body = json.load(f)
+          if not (200 <= status < 300 and body.get('ok') is True and body.get('sent') is True):
+              raise SystemExit('O e-mail de teste não foi confirmado como enviado.')
+          print('E-mail de teste enviado com sucesso para', body.get('recipient'))
+          PY
