@@ -49,3 +49,5 @@ jobs:
               raise SystemExit('O e-mail de teste não foi confirmado como enviado.')
           print('E-mail de teste enviado com sucesso para', body.get('recipient'))
           PY
+
+# Disparo solicitado em 28/07/2026
