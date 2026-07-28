@@ -78,10 +78,11 @@ function diversify(promotions, updatedAt) {
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Método não permitido.' });
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return res.status(200).json({ ok: true, configured: false, updatedAt: null, promotions: [], national: [], international: [] });
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return res.status(200).json({ ok: true, configured: false, updatedAt: null, promotions: [], national: [], international: [], providerQuotaExhausted: false });
   try {
     const promotions = [];
     let updatedAt = null;
+    let providerQuotaExhausted = false;
     let cursor;
     do {
       const page = await list({ prefix: 'monitoring/', limit: 100, cursor });
@@ -94,6 +95,7 @@ module.exports = async function handler(req, res) {
         if (document.updatedAt && (!updatedAt || document.updatedAt > updatedAt)) updatedAt = document.updatedAt;
         for (const trip of Array.isArray(document.trips) ? document.trips : []) {
           if (!trip.active) continue;
+          if (/run out of searches|quota|limit/i.test(String(trip.lastError || ''))) providerQuotaExhausted = true;
           const checkedAt = trip.lastCheckedAt || document.updatedAt || null;
           const suggestions = Array.isArray(trip.lastSuggestions) && trip.lastSuggestions.length ? trip.lastSuggestions : [trip.lastSuggestion].filter(Boolean);
           suggestions.slice(0, 3).forEach(suggestion => addPromotion(promotions, trip, suggestion, 'saved', trip.destination, checkedAt));
@@ -107,7 +109,7 @@ module.exports = async function handler(req, res) {
     const national = diversified.filter(item => item.category === 'national');
     const international = diversified.filter(item => item.category === 'international');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-    return res.status(200).json({ ok: true, configured: true, updatedAt, refreshHours: 3, promotions: diversified, national, international });
+    return res.status(200).json({ ok: true, configured: true, updatedAt, refreshHours: 3, providerQuotaExhausted, promotions: diversified, national, international });
   } catch (error) {
     console.error('Latest promotions error:', error);
     return res.status(500).json({ ok: false, error: 'Não foi possível carregar as promoções monitoradas.' });
