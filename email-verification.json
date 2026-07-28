@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-07-28T00:08:23.110984+00:00",
+  "emailHealthHttp": 200,
+  "emailConfigured": true,
+  "recipientMasked": "sa***@gmail.com",
+  "emailHealthMessage": "Serviço de e-mail configurado.",
+  "monitorHttp": 200,
+  "monitorOk": true,
+  "monitorSkipped": true,
+  "summarySent": null,
+  "emailEnabled": null,
+  "checkedTrips": 0,
+  "errors": 0,
+  "message": "Monitor já executado nas últimas 3 horas.",
+  "verifiedOk": true
+}
