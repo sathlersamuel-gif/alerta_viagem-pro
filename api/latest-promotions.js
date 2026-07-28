@@ -1,6 +1,6 @@
 const { list, get } = require('@vercel/blob');
 
-const INTERNATIONAL_DESTINATIONS = new Set(['EZE','AEP','SCL','LIM','MVD','ASU','CUN','MIA','MCO','FLL','LIS','OPO','MAD','BCN']);
+const INTERNATIONAL_DESTINATIONS = new Set(['EZE','SCL','LIM','MVD','ASU','BOG','PTY','CUN','PUJ','MEX','MIA','MCO','LIS','MAD','BCN','CDG','FCO']);
 
 async function streamToJson(stream) {
   const reader = stream.getReader();
@@ -21,8 +21,10 @@ function compactDate(value) {
 function bookingUrl(trip, suggestion, destination = trip.destination) {
   const origin = String(trip.origin || '').trim().toLowerCase();
   const arrival = String(destination || '').trim().toLowerCase();
-  const departure = compactDate(trip.departure);
-  const returning = compactDate(trip.return);
+  const departureValue = suggestion?.departureDate || trip.departure;
+  const returnValue = suggestion?.returnDate || trip.return;
+  const departure = compactDate(departureValue);
+  const returning = compactDate(returnValue);
   const adults = Math.max(1, Math.min(9, Number(trip.adults) || 1));
   const children = Math.max(0, Math.min(8, Number(trip.children) || 0));
   if (!/^[a-z]{3}$/.test(origin) || !/^[a-z]{3}$/.test(arrival) || !/^\d{6}$/.test(departure)) return '#';
@@ -37,12 +39,15 @@ function bookingUrl(trip, suggestion, destination = trip.destination) {
 
 function addPromotion(promotions, trip, suggestion, type = 'saved', destination = trip.destination, checkedAt = null) {
   if (!suggestion?.price) return;
-  const category = INTERNATIONAL_DESTINATIONS.has(String(destination).toUpperCase()) ? 'international' : 'national';
+  const code = String(destination).toUpperCase();
+  const category = INTERNATIONAL_DESTINATIONS.has(code) ? 'international' : 'national';
+  const departure = suggestion.departureDate || trip.departure;
+  const returnDate = suggestion.returnDate || trip.return || '';
   promotions.push({
-    type, category, origin: trip.origin, destination, departure: trip.departure, returnDate: trip.return || '',
+    type, category, origin: trip.origin, destination: code, departure, returnDate,
     adults: trip.adults || 1, children: trip.children || 0, price: Number(suggestion.price),
     airline: suggestion.airline || 'Companhia não informada', stops: Number(suggestion.stops) || 0,
-    azul: Boolean(suggestion.azul), checkedAt, link: bookingUrl(trip, suggestion, destination)
+    azul: Boolean(suggestion.azul), checkedAt, link: bookingUrl(trip, suggestion, code)
   });
 }
 
@@ -53,12 +58,12 @@ function diversify(promotions, updatedAt) {
     if (!exactUnique.has(key)) exactUnique.set(key, item);
   });
   const all = [...exactUnique.values()];
-  const bestByRoute = new Map();
+  const bestByRouteDate = new Map();
   for (const item of all) {
     const routeKey = `${item.origin}-${item.destination}-${item.departure}-${item.returnDate}`;
-    if (!bestByRoute.has(routeKey)) bestByRoute.set(routeKey, item);
+    if (!bestByRouteDate.has(routeKey)) bestByRouteDate.set(routeKey, item);
   }
-  const routes = [...bestByRoute.values()];
+  const routes = [...bestByRouteDate.values()];
   const seed = String(updatedAt || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
   const rotate = list => {
     const sorted = list.sort((a, b) => a.price - b.price);
@@ -66,18 +71,9 @@ function diversify(promotions, updatedAt) {
     const offset = seed % sorted.length;
     return sorted.slice(offset).concat(sorted.slice(0, offset));
   };
-  const national = rotate(routes.filter(item => item.category === 'national'));
-  const international = rotate(routes.filter(item => item.category === 'international'));
-  const selected = [...national.slice(0, 8), ...international.slice(0, 8)];
-  const selectedKeys = new Set(selected.map(item => `${item.origin}-${item.destination}-${item.departure}-${item.returnDate}-${item.airline}-${item.price}-${item.stops}`));
-  for (const item of all) {
-    const key = `${item.origin}-${item.destination}-${item.departure}-${item.returnDate}-${item.airline}-${item.price}-${item.stops}`;
-    if (!selectedKeys.has(key) && selected.length < 30) {
-      selected.push(item);
-      selectedKeys.add(key);
-    }
-  }
-  return selected;
+  const national = rotate(routes.filter(item => item.category === 'national')).slice(0, 10);
+  const international = rotate(routes.filter(item => item.category === 'international')).slice(0, 10);
+  return [...national, ...international];
 }
 
 module.exports = async function handler(req, res) {
@@ -100,7 +96,7 @@ module.exports = async function handler(req, res) {
           if (!trip.active) continue;
           const checkedAt = trip.lastCheckedAt || document.updatedAt || null;
           const suggestions = Array.isArray(trip.lastSuggestions) && trip.lastSuggestions.length ? trip.lastSuggestions : [trip.lastSuggestion].filter(Boolean);
-          suggestions.slice(0, 6).forEach(suggestion => addPromotion(promotions, trip, suggestion, 'saved', trip.destination, checkedAt));
+          suggestions.slice(0, 3).forEach(suggestion => addPromotion(promotions, trip, suggestion, 'saved', trip.destination, checkedAt));
           for (const alternative of Array.isArray(trip.lastFallbackDeals) ? trip.lastFallbackDeals : []) {
             addPromotion(promotions, trip, alternative, 'alternative', alternative.destination, trip.lastFallbackCheckedAt || checkedAt);
           }
