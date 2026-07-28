@@ -132,16 +132,6 @@ function baseSearchParams(query) {
   return params;
 }
 
-function googleFlightsFallback(query) {
-  const from = safe(query.departure_id, 3).toUpperCase();
-  const to = safe(query.arrival_id, 3).toUpperCase();
-  const outbound = safe(query.outbound_date, 10);
-  const returning = safe(query.return_date, 10);
-  const airline = safe(query.airline, 120);
-  const text = `Voos de ${from} para ${to} em ${outbound}${returning ? ` com volta em ${returning}` : ''}${airline ? ` pela ${airline}` : ''}`;
-  return `https://www.google.com/travel/flights?q=${encodeURIComponent(text)}&hl=pt-BR&curr=BRL`;
-}
-
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).send('Método não permitido.');
   const apiKey = process.env.SERPAPI_API_KEY;
@@ -168,22 +158,18 @@ module.exports = async function handler(req, res) {
       params.delete('deep_search');
     }
 
-    if (!bookingToken) return res.redirect(302, googleFlightsFallback(req.query));
+    if (!bookingToken) throw new Error('A companhia não forneceu um link direto para este itinerário.');
     params.set('booking_token', bookingToken);
     const bookingData = await serpSearch(params, apiKey);
     const choice = chooseBookingRequest(bookingData, requestedAirline, targetPrice);
-    if (!choice) return res.redirect(302, googleFlightsFallback(req.query));
+    if (!choice) throw new Error('Esta tarifa não possui link direto de companhia ou agência. Escolha outra oferta disponível.');
 
     const page = submitPage(choice.booking_request);
     if (page.redirect) return res.redirect(302, page.redirect);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(page.html);
   } catch (error) {
-    const fallback = googleFlightsFallback(req.query);
-    if (/origem|destino|data de ida/i.test(error.message || '')) {
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      return res.status(502).send(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:Arial,sans-serif;padding:28px"><h2>Não foi possível abrir a reserva</h2><p>${htmlEscape(error.message)}</p><button onclick="history.back()">Voltar</button></body></html>`);
-    }
-    return res.redirect(302, fallback);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(502).send(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:Arial,sans-serif;padding:28px"><h2>Não foi possível abrir a reserva direta</h2><p>${htmlEscape(error.message)}</p><button onclick="history.back()">Voltar</button></body></html>`);
   }
 };
