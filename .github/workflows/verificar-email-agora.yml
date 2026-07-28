@@ -1,0 +1,71 @@
+name: Verificar e-mail agora
+
+on:
+  push:
+    paths:
+      - '.github/workflows/verificar-email-agora.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar serviço e monitoramento
+        run: |
+          set -euo pipefail
+          HEALTH_HTTP=$(curl --silent --show-error --location --max-time 120 --output email-health.json --write-out "%{http_code}" "https://alerta-viagem-pro.vercel.app/api/email-health")
+          MONITOR_HTTP=$(curl --silent --show-error --location --max-time 120 --output monitor-response.json --write-out "%{http_code}" "https://alerta-viagem-pro.vercel.app/api/monitor-trips")
+          python - "$HEALTH_HTTP" "$MONITOR_HTTP" <<'PY'
+          import json, sys
+          from datetime import datetime, timezone
+
+          health_http = int(sys.argv[1])
+          monitor_http = int(sys.argv[2])
+          with open('email-health.json', encoding='utf-8') as f:
+              health = json.load(f)
+          with open('monitor-response.json', encoding='utf-8') as f:
+              monitor = json.load(f)
+
+          result = {
+              'checkedAt': datetime.now(timezone.utc).isoformat(),
+              'emailHealthHttp': health_http,
+              'emailConfigured': health.get('configured') is True,
+              'recipientMasked': health.get('recipientMasked'),
+              'emailHealthMessage': health.get('message'),
+              'monitorHttp': monitor_http,
+              'monitorOk': monitor.get('ok') is True,
+              'monitorSkipped': monitor.get('skipped') is True,
+              'summarySent': monitor.get('summarySent'),
+              'emailEnabled': monitor.get('emailEnabled'),
+              'checkedTrips': monitor.get('checked', 0),
+              'errors': monitor.get('errors', 0),
+              'message': monitor.get('message') or monitor.get('error') or 'Execução concluída.'
+          }
+          result['verifiedOk'] = (
+              200 <= health_http < 300
+              and result['emailConfigured']
+              and 200 <= monitor_http < 300
+              and result['monitorOk']
+              and (result['monitorSkipped'] or result['summarySent'] is True)
+          )
+          with open('email-verification.json', 'w', encoding='utf-8') as f:
+              json.dump(result, f, ensure_ascii=False, indent=2)
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          if not result['verifiedOk']:
+              raise SystemExit(1)
+          PY
+
+      - name: Salvar resultado
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add email-verification.json || true
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Registrar verificação real do e-mail [skip ci]"
+          git push
