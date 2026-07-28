@@ -12,19 +12,14 @@ async function streamToJson(stream) {
 }
 
 function bookingUrl(trip, suggestion, destination = trip.destination) {
-  const q = new URLSearchParams({
-    departure_id: trip.origin,
-    arrival_id: destination,
-    outbound_date: trip.departure,
-    adults: String(trip.adults || 1),
-    children: String(trip.children || 0),
-    airline: suggestion?.airline || '',
-    price: String(suggestion?.price || '')
-  });
-  if (trip.return) q.set('return_date', trip.return);
-  if (suggestion?.bookingToken) q.set('booking_token', suggestion.bookingToken);
-  if (suggestion?.departureToken) q.set('departure_token', suggestion.departureToken);
-  return `/api/flight-booking?${q.toString()}`;
+  const origin = String(trip.origin || '').toUpperCase();
+  const arrival = String(destination || '').toUpperCase();
+  const departure = String(trip.departure || '');
+  const returning = String(trip.return || '');
+  const outboundLeg = `${origin}.${arrival}.${departure}`;
+  const returnLeg = returning ? `*${arrival}.${origin}.${returning}` : '';
+  const fragment = `flt=${outboundLeg}${returnLeg};c:BRL;e:1;sd:1;t:f`;
+  return `https://www.google.com/travel/flights?hl=pt-BR&curr=BRL#${fragment}`;
 }
 
 module.exports = async function handler(req, res) {
@@ -99,7 +94,7 @@ module.exports = async function handler(req, res) {
         if (!unique.has(key)) unique.set(key, item);
       });
 
-    res.setHeader('Cache-Control', 'public, s-maxage=10800, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     return res.status(200).json({
       ok: true,
       configured: true,
