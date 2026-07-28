@@ -11,37 +11,39 @@ async function streamToJson(stream) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
+function compactDate(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[1].slice(2)}${match[2]}${match[3]}` : '';
+}
+
 function bookingUrl(trip, suggestion, destination = trip.destination) {
-  const origin = String(trip.origin || '').toUpperCase();
-  const arrival = String(destination || '').toUpperCase();
-  const departure = String(trip.departure || '');
-  const returning = String(trip.return || '');
-  const adults = Math.max(1, Number(trip.adults) || 1);
-  const children = Math.max(0, Number(trip.children) || 0);
+  const origin = String(trip.origin || '').trim().toLowerCase();
+  const arrival = String(destination || '').trim().toLowerCase();
+  const departure = compactDate(trip.departure);
+  const returning = compactDate(trip.return);
+  const adults = Math.max(1, Math.min(9, Number(trip.adults) || 1));
+  const children = Math.max(0, Math.min(8, Number(trip.children) || 0));
 
-  const params = new URLSearchParams({
-    departure_id: origin,
-    arrival_id: arrival,
-    outbound_date: departure,
-    adults: String(adults),
-    children: String(children),
-    airline: String(suggestion?.airline || ''),
-    price: String(suggestion?.price || '')
-  });
-
-  if (returning) params.set('return_date', returning);
-  if (suggestion?.bookingToken) params.set('booking_token', suggestion.bookingToken);
-  if (suggestion?.departureToken) params.set('departure_token', suggestion.departureToken);
-
-  if (suggestion?.bookingToken || suggestion?.departureToken) {
-    return `/api/flight-booking?${params.toString()}`;
+  if (!/^[a-z]{3}$/.test(origin) || !/^[a-z]{3}$/.test(arrival) || !/^\d{6}$/.test(departure)) {
+    return '#';
   }
 
-  const passengerText = `${adults} adulto${adults === 1 ? '' : 's'}${children ? ` e ${children} criança${children === 1 ? '' : 's'}` : ''}`;
-  const query = returning
-    ? `Voos de ${origin} para ${arrival} ida ${departure} volta ${returning} para ${passengerText}`
-    : `Voos só ida de ${origin} para ${arrival} em ${departure} para ${passengerText}`;
-  return `https://www.google.com/search?${new URLSearchParams({ q: query }).toString()}`;
+  const routePath = returning
+    ? `${origin}/${arrival}/${departure}/${returning}`
+    : `${origin}/${arrival}/${departure}`;
+
+  const params = new URLSearchParams({
+    adultsv2: String(adults),
+    cabinclass: 'economy',
+    childrenv2: children ? Array.from({ length: children }, () => '10').join('|') : '',
+    currency: 'BRL',
+    locale: 'pt-BR',
+    market: 'BR',
+    preferdirects: 'false',
+    ref: 'home'
+  });
+
+  return `https://www.skyscanner.com.br/transport/flights/${routePath}/?${params.toString()}`;
 }
 
 function addPromotion(promotions, trip, suggestion, type = 'saved', destination = trip.destination, checkedAt = null) {
