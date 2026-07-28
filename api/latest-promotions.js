@@ -16,10 +16,21 @@ function bookingUrl(trip, suggestion, destination = trip.destination) {
   const arrival = String(destination || '').toUpperCase();
   const departure = String(trip.departure || '');
   const returning = String(trip.return || '');
-  const outboundLeg = `${origin}.${arrival}.${departure}`;
-  const returnLeg = returning ? `*${arrival}.${origin}.${returning}` : '';
-  const fragment = `flt=${outboundLeg}${returnLeg};c:BRL;e:1;sd:1;t:f`;
-  return `https://www.google.com/travel/flights?hl=pt-BR&curr=BRL#${fragment}`;
+  const adults = Math.max(1, Number(trip.adults) || 1);
+  const children = Math.max(0, Number(trip.children) || 0);
+
+  const passengerText = `${adults} adult${adults === 1 ? '' : 's'}${children ? ` and ${children} child${children === 1 ? '' : 'ren'}` : ''}`;
+  const query = returning
+    ? `Flights from ${origin} to ${arrival} departing ${departure} returning ${returning} for ${passengerText}`
+    : `One way flights from ${origin} to ${arrival} departing ${departure} for ${passengerText}`;
+
+  const params = new URLSearchParams({
+    q: query,
+    hl: 'pt-BR',
+    curr: 'BRL'
+  });
+
+  return `https://www.google.com/travel/flights?${params.toString()}`;
 }
 
 module.exports = async function handler(req, res) {
