@@ -4,7 +4,7 @@
   "functions": {
     "api/flights.js": { "maxDuration": 30 },
     "api/flight-booking.js": { "maxDuration": 30 },
-    "api/monitor-trips.js": { "maxDuration": 30 },
+    "api/monitor-trips.js": { "maxDuration": 60 },
     "api/managed-trips.js": { "maxDuration": 30 },
     "api/available-dates.js": { "maxDuration": 30 },
     "api/email-health.js": { "maxDuration": 30 },
