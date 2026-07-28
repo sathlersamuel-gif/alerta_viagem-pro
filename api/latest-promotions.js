@@ -18,12 +18,30 @@ function bookingUrl(trip, suggestion, destination = trip.destination) {
   const returning = String(trip.return || '');
   const adults = Math.max(1, Number(trip.adults) || 1);
   const children = Math.max(0, Number(trip.children) || 0);
-  const passengerText = `${adults} adult${adults === 1 ? '' : 's'}${children ? ` and ${children} child${children === 1 ? '' : 'ren'}` : ''}`;
+
+  const params = new URLSearchParams({
+    departure_id: origin,
+    arrival_id: arrival,
+    outbound_date: departure,
+    adults: String(adults),
+    children: String(children),
+    airline: String(suggestion?.airline || ''),
+    price: String(suggestion?.price || '')
+  });
+
+  if (returning) params.set('return_date', returning);
+  if (suggestion?.bookingToken) params.set('booking_token', suggestion.bookingToken);
+  if (suggestion?.departureToken) params.set('departure_token', suggestion.departureToken);
+
+  if (suggestion?.bookingToken || suggestion?.departureToken) {
+    return `/api/flight-booking?${params.toString()}`;
+  }
+
+  const passengerText = `${adults} adulto${adults === 1 ? '' : 's'}${children ? ` e ${children} criança${children === 1 ? '' : 's'}` : ''}`;
   const query = returning
-    ? `Flights from ${origin} to ${arrival} departing ${departure} returning ${returning} for ${passengerText}`
-    : `One way flights from ${origin} to ${arrival} departing ${departure} for ${passengerText}`;
-  const params = new URLSearchParams({ q: query, hl: 'pt-BR', curr: 'BRL' });
-  return `https://www.google.com/travel/flights?${params.toString()}`;
+    ? `Voos de ${origin} para ${arrival} ida ${departure} volta ${returning} para ${passengerText}`
+    : `Voos só ida de ${origin} para ${arrival} em ${departure} para ${passengerText}`;
+  return `https://www.google.com/search?${new URLSearchParams({ q: query }).toString()}`;
 }
 
 function addPromotion(promotions, trip, suggestion, type = 'saved', destination = trip.destination, checkedAt = null) {
