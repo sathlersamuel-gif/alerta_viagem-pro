@@ -46,18 +46,20 @@ source = source.replace(
 
 source = source.replace(
   /const FALLBACK_DESTINATIONS = \[[^\]]+\];/,
-  "const FALLBACK_DESTINATIONS = ['BSB','GRU','CGH','GIG','SDU','CNF','SSA','REC','FOR','MCZ','NAT','JPA','CWB','FLN','IGU','POA','BEL','MAO','CGB','PVH','JPR','OAL','BVH','EZE','AEP','SCL','LIM','MVD','ASU','CUN','MIA','MCO','FLL','LIS','OPO','MAD','BCN'];"
+  "const FALLBACK_DESTINATIONS = ['BSB','GRU','CGH','GIG','SDU','CNF','SSA','REC','FOR','MCZ','NAT','JPA','CWB','FLN','IGU','POA','BEL','MAO','CGB','PVH','JPR','OAL','BVH','EZE','AEP','SCL','LIM','MVD','ASU','CUN','MIA','MCO','FLL','LIS','OPO','MAD','BCN'];\nconst INTERNATIONAL_DESTINATIONS = new Set(['EZE','AEP','SCL','LIM','MVD','ASU','CUN','MIA','MCO','FLL','LIS','OPO','MAD','BCN']);"
 );
 
 source = source.replace(
   /function fallbackTargets\(trip\) \{[\s\S]*?\n\}/,
 `function fallbackTargets(trip) {
-  const rotation = Math.floor(Date.now() / (60 * 60 * 1000));
+  const rotation = Math.floor(Date.now() / (60 * 1000));
   const score = code => [...code].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return FALLBACK_DESTINATIONS
+  const rotate = list => list
     .filter(code => code !== trip.origin && code !== trip.destination)
-    .sort((a, b) => ((score(a) + rotation * 7) % 97) - ((score(b) + rotation * 7) % 97))
-    .slice(0, 8);
+    .sort((a, b) => ((score(a) + rotation * 11) % 101) - ((score(b) + rotation * 11) % 101));
+  const national = rotate(FALLBACK_DESTINATIONS.filter(code => !INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 4);
+  const international = rotate(FALLBACK_DESTINATIONS.filter(code => INTERNATIONAL_DESTINATIONS.has(code))).slice(0, 4);
+  return [...national, ...international];
 }`
 );
 
@@ -82,12 +84,13 @@ const checks = [
   /async function canRun\(now, force = false\)/,
   /canRun\(now,force\)/,
   /trip\.lastFallbackDeals=deals/,
-  /slice\(0, 8\)/,
+  /INTERNATIONAL_DESTINATIONS/,
+  /slice\(0, 4\)/,
   /const MANUAL_RUN_INTERVAL = 60 \* 1000;/
 ];
 if (checks.some(pattern => !pattern.test(source))) {
-  throw new Error('Falha ao validar a atualização manual e a renovação das promoções.');
+  throw new Error('Falha ao validar a busca nacional e internacional.');
 }
 
 fs.writeFileSync(path, source, 'utf8');
-console.log('Atualização manual real ativada: pesquisa principal e destinos alternativos renovados.');
+console.log('Busca nacional e internacional ativada em cada atualização manual.');
