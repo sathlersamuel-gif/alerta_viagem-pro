@@ -18,6 +18,18 @@ if (!source.includes('const isBlockedAlertDestination')) {
   );
 }
 
+// Guarda definitiva: ignora a viagem bloqueada antes de pesquisar ou enviar qualquer e-mail.
+if (!source.includes('if(isBlockedAlertDestination(trip))continue;')) {
+  source = source.replace(
+    "if(!trip.active)continue; activeTrips++; checked++;",
+    "if(!trip.active)continue;\n          if(isBlockedAlertDestination(trip))continue;\n          activeTrips++; checked++;"
+  );
+  source = source.replace(
+    "if (!trip.active) continue; activeTrips++; checked++;",
+    "if (!trip.active) continue;\n          if (isBlockedAlertDestination(trip)) continue;\n          activeTrips++; checked++;"
+  );
+}
+
 // Só permite continuar quando houver oferta pública da Azul em pontos.
 source = source.replace(
   "const pointsOffer=await findPublicAzulPoints(trip);",
@@ -59,4 +71,4 @@ source = source.replace(
 );
 
 fs.writeFileSync(target, source, 'utf8');
-console.log('Filtro aplicado: Brasília bloqueada e somente promoções Azul em pontos.');
+console.log('Filtro aplicado: Brasília bloqueada antes da busca e somente promoções Azul em pontos.');
